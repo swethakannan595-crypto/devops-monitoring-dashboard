@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DevOps Monitoring Dashboard
 
 A production-style DevOps monitoring platform built with FastAPI.
@@ -15,3 +16,6 @@ A production-style DevOps monitoring platform built with FastAPI.
 ## Status
 
 🚧 Week 1 - Project Foundation
+=======
+# devops-monitoring-dashboard
+>>>>>>> 4450ef844bef0837f3f159f7228c421006d3994a
