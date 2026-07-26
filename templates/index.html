@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Monitoring Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* ===== Color Theory System: Slate Dark + Semantic Status ===== */
+        :root {
+            /* Slate Palette — Canvas & Surfaces */
+            --bg-canvas: #0F172A;
+            --bg-card: #1E293B;
+            --bg-elevated: #253349;
+            --bg-hover: #2a3a52;
+            --border: #334155;
+            --border-subtle: rgba(51,65,85,0.6);
+
+            /* Text Hierarchy */
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+
+            /* Semantic Status — Green/Amber/Red/Blue */
+            --healthy: #10B981;
+            --healthy-dim: rgba(16,185,129,0.12);
+            --healthy-border: rgba(16,185,129,0.25);
+            --warning: #F59E0B;
+            --warning-dim: rgba(245,158,11,0.12);
+            --warning-border: rgba(245,158,11,0.25);
+            --critical: #EF4444;
+            --critical-dim: rgba(239,68,68,0.12);
+            --critical-border: rgba(239,68,68,0.25);
+            --info: #3B82F6;
+            --info-dim: rgba(59,130,246,0.12);
+            --info-border: rgba(59,130,246,0.25);
+
+            /* Category Accents — FastAPI/Docker/Prometheus */
+            --accent-fastapi: #06B6D4;
+            --accent-fastapi-dim: rgba(6,182,212,0.12);
+            --accent-fastapi-border: rgba(6,182,212,0.25);
+            --accent-docker: #2563EB;
+            --accent-docker-dim: rgba(37,99,235,0.12);
+            --accent-docker-border: rgba(37,99,235,0.25);
+            --accent-prometheus: #F97316;
+            --accent-prometheus-dim: rgba(249,115,22,0.12);
+            --accent-prometheus-border: rgba(249,115,22,0.25);
+
+            /* Multi-Line Chart Palette */
+            --line-cyan: #06B6D4;
+            --line-violet: #8B5CF6;
+            --line-emerald: #10B981;
+            --line-amber: #F59E0B;
+            --line-rose: #F43F5E;
+
+            /* Sizing */
+            --radius: 12px;
+            --radius-sm: 8px;
+            --sidebar-w: 256px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .layout { display: flex; min-height: 100vh; }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: var(--accent-prometheus-dim);
+            border: 1px solid var(--accent-prometheus-border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-prometheus);
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .brand-text h2 {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+        }
+
+        .brand-text span {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 400;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 10px;
+            overflow-y: auto;
+        }
+
+        .nav-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            padding: 12px 12px 6px;
+        }
+
+        .sidebar-nav ul { list-style: none; }
+
+        .sidebar-nav li { margin-bottom: 1px; }
+
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .sidebar-nav li a i { width: 18px; text-align: center; font-size: 13px; }
+
+        .sidebar-nav li a:hover {
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav li a.active {
+            background: var(--info-dim);
+            color: var(--info);
+            border: 1px solid var(--info-border);
+        }
+
+        .sidebar-nav li a .nav-badge {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1px 7px;
+            border-radius: 20px;
+            line-height: 1.6;
+        }
+
+        .badge-critical { background: var(--critical-dim); color: var(--critical); }
+        .badge-warning { background: var(--warning-dim); color: var(--warning); }
+
+        .sidebar-bottom {
+            padding: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .server-node {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+        }
+
+        .node-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--healthy);
+            box-shadow: 0 0 6px rgba(16,185,129,0.5);
+            animation: pulse-healthy 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-healthy {
+            0%, 100% { box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+            50% { box-shadow: 0 0 12px rgba(16,185,129,0.7); }
+        }
+
+        .node-info { flex: 1; }
+        .node-info .name { font-size: 12px; font-weight: 600; }
+        .node-info .meta { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .node-uptime { font-size: 11px; color: var(--healthy); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+        /* ===== Main Content ===== */
+        .main { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; }
+
+        /* Topbar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 32px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15,23,42,0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar-left h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+        .topbar-left .crumb { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .topbar-left .crumb b { color: var(--text-secondary); font-weight: 500; }
+
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid var(--healthy-border);
+            background: var(--healthy-dim);
+            color: var(--healthy);
+        }
+
+        .status-pill .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--healthy);
+            animation: pulse-healthy 2.5s ease-in-out infinite;
+        }
+
+        .tb-btn {
+            width: 34px; height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            font-size: 13px;
+        }
+
+        .tb-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+        .tb-btn .red-dot { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--critical); }
+
+        .tb-clock {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            width: 34px; height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        /* ===== Content ===== */
+        .content { padding: 24px 32px 40px; }
+
+        /* -- Metric Cards -- */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .m-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .m-card:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Thin colored top border — NOT saturated background */
+        .m-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .m-card:hover::after { opacity: 1; }
+
+        .m-card.cpu::after { background: var(--accent-fastapi); }
+        .m-card.cpu:hover { border-color: var(--accent-fastapi-border); }
+        .m-card.mem::after { background: var(--accent-docker); }
+        .m-card.mem:hover { border-color: var(--accent-docker-border); }
+        .m-card.disk::after { background: var(--accent-prometheus); }
+        .m-card.disk:hover { border-color: var(--accent-prometheus-border); }
+        .m-card.net::after { background: var(--healthy); }
+        .m-card.net:hover { border-color: var(--healthy-border); }
+
+        .m-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .m-card-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .m-card-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .cpu .m-card-icon { background: var(--accent-fastapi-dim); color: var(--accent-fastapi); }
+        .mem .m-card-icon { background: var(--accent-docker-dim); color: var(--accent-docker); }
+        .disk .m-card-icon { background: var(--accent-prometheus-dim); color: var(--accent-prometheus); }
+        .net .m-card-icon { background: var(--healthy-dim); color: var(--healthy); }
+
+        .m-card-label span {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Double-encode: color + text for status trend */
+        .m-trend {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .m-trend.up { background: var(--critical-dim); color: var(--critical); }
+        .m-trend.down { background: var(--healthy-dim); color: var(--healthy); }
+        .m-trend.flat { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+
+        .m-card-body {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+
+        .m-val-group { flex: 1; }
+
+        .m-value {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -1px;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .cpu .m-value { color: var(--accent-fastapi); }
+        .mem .m-value { color: var(--accent-docker); }
+        .disk .m-value { color: var(--accent-prometheus); }
+        .net .m-value { color: var(--healthy); }
+
+        .m-sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Status dot beside value for double-encoding */
+        .m-status-dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+            position: relative;
+            top: -1px;
+        }
+
+        .m-status-dot.ok { background: var(--healthy); box-shadow: 0 0 4px rgba(16,185,129,0.4); }
+        .m-status-dot.warn { background: var(--warning); box-shadow: 0 0 4px rgba(245,158,11,0.4); }
+        .m-status-dot.crit { background: var(--critical); box-shadow: 0 0 4px rgba(239,68,68,0.4); }
+
+        .m-gauge { width: 48px; height: 48px; flex-shrink: 0; }
+        .m-gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .m-gauge .g-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 3.5; }
+        .m-gauge .g-fill { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+        .cpu .g-fill { stroke: var(--accent-fastapi); }
+        .mem .g-fill { stroke: var(--accent-docker); }
+        .disk .g-fill { stroke: var(--accent-prometheus); }
+        .net .g-fill { stroke: var(--healthy); }
+
+        /* -- Two-Column Grid -- */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-head-left { display: flex; align-items: center; gap: 9px; }
+
+        .panel-icon {
+            width: 28px; height: 28px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+
+        .panel-head h3 { font-size: 13px; font-weight: 700; }
+
+        .panel-tabs {
+            display: flex;
+            gap: 2px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .p-tab {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.15s ease;
+        }
+
+        .p-tab:hover { color: var(--text-secondary); }
+        .p-tab.active { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+
+        .chart-wrap { padding: 16px 18px; height: 260px; position: relative; }
+        .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+        /* -- Alerts Panel -- */
+        .alerts-scroll {
+            padding: 10px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .alert-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            transition: background 0.15s ease;
+            border: 1px solid transparent;
+            cursor: default;
+        }
+
+        .alert-row:hover { background: rgba(255,255,255,0.02); border-color: var(--border-subtle); }
+
+        /* Double-encode: colored dot + text label */
+        .alert-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .alert-dot.critical { background: var(--critical); box-shadow: 0 0 6px rgba(239,68,68,0.35); }
+        .alert-dot.warning { background: var(--warning); box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+        .alert-dot.info { background: var(--info); box-shadow: 0 0 6px rgba(59,130,246,0.3); }
+        .alert-dot.healthy { background: var(--healthy); box-shadow: 0 0 6px rgba(16,185,129,0.3); }
+
+        .alert-body { flex: 1; min-width: 0; }
+
+        .alert-title {
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Text label for double-encoding */
+        .alert-severity {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.5;
+        }
+
+        .alert-severity.critical { background: var(--critical-dim); color: var(--critical); }
+        .alert-severity.warning { background: var(--warning-dim); color: var(--warning); }
+        .alert-severity.info { background: var(--info-dim); color: var(--info); }
+        .alert-severity.healthy { background: var(--healthy-dim); color: var(--healthy); }
+
+        .alert-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+        .alert-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; margin-top: 4px; }
+
+        /* -- Three-Column Bottom -- */
+        .three-col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+        }
+
+        .stat-box-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .stat-box-head h3 { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+
+        .stat-tag {
+            font-size: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Process rows */
+        .proc-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .proc-row { display: flex; align-items: center; gap: 10px; }
+
+        .proc-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            width: 110px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .proc-bar-bg {
+            flex: 1;
+            height: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .proc-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease;
+        }
+
+        .proc-val {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            width: 38px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        /* Docker containers */
+        .docker-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .docker-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.015);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.15s ease;
+        }
+
+        .docker-row:hover { border-color: var(--border); }
+
+        .docker-status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .docker-status-dot.running { background: var(--healthy); box-shadow: 0 0 4px rgba(16,185,129,0.4); }
+        .docker-status-dot.exited { background: var(--critical); box-shadow: 0 0 4px rgba(239,68,68,0.4); }
+        .docker-status-dot.restarting { background: var(--warning); box-shadow: 0 0 4px rgba(245,158,11,0.4); animation: blink 1s ease-in-out infinite; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .docker-info { flex: 1; min-width: 0; }
+        .docker-info .d-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .docker-info .d-image { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .docker-state {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            flex-shrink: 0;
+        }
+
+        .docker-state.running { background: var(--healthy-dim); color: var(--healthy); }
+        .docker-state.exited { background: var(--critical-dim); color: var(--critical); }
+        .docker-state.restarting { background: var(--warning-dim); color: var(--warning); }
+
+        /* Prometheus targets */
+        .target-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .target-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .target-row:last-child { border-bottom: none; }
+
+        .target-status {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .target-status.up { background: var(--healthy); box-shadow: 0 0 4px rgba(16,185,129,0.4); }
+        .target-status.down { background: var(--critical); box-shadow: 0 0 4px rgba(239,68,68,0.4); }
+
+        .target-name {
+            flex: 1;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .target-latency {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* Entrance animation */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .m-card { animation: fadeUp 0.4s ease backwards; }
+        .m-card:nth-child(1) { animation-delay: 0.03s; }
+        .m-card:nth-child(2) { animation-delay: 0.06s; }
+        .m-card:nth-child(3) { animation-delay: 0.09s; }
+        .m-card:nth-child(4) { animation-delay: 0.12s; }
+        .panel { animation: fadeUp 0.4s ease 0.15s backwards; }
+        .stat-box { animation: fadeUp 0.4s ease backwards; }
+        .stat-box:nth-child(1) { animation-delay: 0.2s; }
+        .stat-box:nth-child(2) { animation-delay: 0.23s; }
+        .stat-box:nth-child(3) { animation-delay: 0.26s; }
+
+        /* Overlay for mobile sidebar */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 99;
+        }
+        .overlay.show { display: block; }
+
+        /* Responsive */
+        @media (max-width: 1440px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 1100px) {
+            .two-col { grid-template-columns: 1fr; }
+            .three-col { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; }
+            .mobile-menu-btn { display: flex !important; }
+            .content { padding: 16px; }
+            .topbar { padding: 12px 16px; }
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fas fa-fire"></i></div>
+            <div class="brand-text">
+                <h2>DevOps Monitor</h2>
+                <span>FastAPI + Prometheus</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-group-label">Observability</div>
+            <ul>
+                <li><a href="#" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li><a href="#"><i class="fas fa-microchip"></i> System Monitor</a></li>
+                <li><a href="#"><i class="fas fa-chart-area"></i> Prometheus Metrics</a></li>
+                <li><a href="#"><i class="fab fa-docker"></i> Docker Containers</a></li>
+            </ul>
+            <div class="nav-group-label">Analysis</div>
+            <ul>
+                <li><a href="#"><i class="fas fa-file-alt"></i> Logs <span class="nav-badge badge-warning">8</span></a></li>
+                <li><a href="#"><i class="fas fa-bell"></i> Alerts <span class="nav-badge badge-critical">3</span></a></li>
+                <li><a href="#"><i class="fas fa-terminal"></i> Terminal</a></li>
+            </ul>
+            <div class="nav-group-label">System</div>
+            <ul>
+                <li><a href="#"><i class="fas fa-code-branch"></i> FastAPI Routes</a></li>
+                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="server-node">
+                <div class="node-dot"></div>
+                <div class="node-info">
+                    <div class="name">prod-srv-01</div>
+                    <div class="meta">us-east-1a</div>
+                </div>
+                <div class="node-uptime">99.97%</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu-btn" id="menuBtn"><i class="fas fa-bars"></i></button>
+                <div>
+                    <h1>Monitoring Dashboard</h1>
+                    <div class="crumb">home / <b>overview</b></div>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="tb-clock" id="clock">--:--:--</div>
+                <div class="status-pill">
+                    <div class="dot"></div>
+                    All Systems Operational
+                </div>
+                <button class="tb-btn" title="Refresh data"><i class="fas fa-sync-alt"></i></button>
+                <button class="tb-btn" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <div class="red-dot"></div>
+                </button>
+            </div>
+        </header>
+
+        <div class="content">
+
+            <!-- Metric Cards -->
+            <section class="metrics-grid">
+
+                <div class="m-card cpu">
+                    <div class="m-card-top">
+                        <div class="m-card-label">
+                            <div class="m-card-icon"><i class="fas fa-microchip"></i></div>
+                            <span>CPU Usage</span>
+                        </div>
+                        <div class="m-trend flat" id="cpuTrend"><i class="fas fa-minus"></i> 0.0%</div>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-val-group">
+                            <div class="m-value"><span class="m-status-dot ok" id="cpuDot"></span><span id="cpuVal">--</span></div>
+                            <div class="m-sub" id="cpuSub">8 cores / 16 threads</div>
+                        </div>
+                        <div class="m-gauge">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="g-bg" cx="24" cy="24" r="19" />
+                                <circle class="g-fill" id="cpuGauge" cx="24" cy="24" r="19" stroke-dasharray="119.38" stroke-dashoffset="119.38" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="m-card mem">
+                    <div class="m-card-top">
+                        <div class="m-card-label">
+                            <div class="m-card-icon"><i class="fas fa-memory"></i></div>
+                            <span>Memory Usage</span>
+                        </div>
+                        <div class="m-trend up" id="memTrend"><i class="fas fa-arrow-up"></i> +2.1%</div>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-val-group">
+                            <div class="m-value"><span class="m-status-dot warn" id="memDot"></span><span id="memVal">--</span></div>
+                            <div class="m-sub" id="memSub">14.4 / 16 GB</div>
+                        </div>
+                        <div class="m-gauge">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="g-bg" cx="24" cy="24" r="19" />
+                                <circle class="g-fill" id="memGauge" cx="24" cy="24" r="19" stroke-dasharray="119.38" stroke-dashoffset="119.38" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="m-card disk">
+                    <div class="m-card-top">
+                        <div class="m-card-label">
+                            <div class="m-card-icon"><i class="fas fa-hdd"></i></div>
+                            <span>Disk Usage</span>
+                        </div>
+                        <div class="m-trend flat" id="diskTrend"><i class="fas fa-minus"></i> 0.0%</div>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-val-group">
+                            <div class="m-value"><span class="m-status-dot ok" id="diskDot"></span><span id="diskVal">--</span></div>
+                            <div class="m-sub" id="diskSub">223 / 500 GB</div>
+                        </div>
+                        <div class="m-gauge">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="g-bg" cx="24" cy="24" r="19" />
+                                <circle class="g-fill" id="diskGauge" cx="24" cy="24" r="19" stroke-dasharray="119.38" stroke-dashoffset="119.38" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="m-card net">
+                    <div class="m-card-top">
+                        <div class="m-card-label">
+                            <div class="m-card-icon"><i class="fas fa-network-wired"></i></div>
+                            <span>Network I/O</span>
+                        </div>
+                        <div class="m-trend down" id="netTrend"><i class="fas fa-arrow-down"></i> -1.3%</div>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-val-group">
+                            <div class="m-value"><span class="m-status-dot ok" id="netDot"></span><span id="netVal">--</span></div>
+                            <div class="m-sub" id="netSub">eth0 / 1Gbps</div>
+                        </div>
+                        <div class="m-gauge">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="g-bg" cx="24" cy="24" r="19" />
+                                <circle class="g-fill" id="netGauge" cx="24" cy="24" r="19" stroke-dasharray="119.38" stroke-dashoffset="119.38" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Chart + Alerts -->
+            <section class="two-col">
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-head-left">
+                            <div class="panel-icon" style="background:var(--accent-prometheus-dim);color:var(--accent-prometheus);"><i class="fas fa-chart-area"></i></div>
+                            <h3>Prometheus Time Series</h3>
+                        </div>
+                        <div class="panel-tabs">
+                            <button class="p-tab active" data-range="1h">1H</button>
+                            <button class="p-tab" data-range="6h">6H</button>
+                            <button class="p-tab" data-range="24h">24H</button>
+                            <button class="p-tab" data-range="7d">7D</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-head-left">
+                            <div class="panel-icon" style="background:var(--critical-dim);color:var(--critical);"><i class="fas fa-exclamation-triangle"></i></div>
+                            <h3>Active Alerts</h3>
+                        </div>
+                        <span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="alertCount">0 firing</span>
+                    </div>
+                    <div class="alerts-scroll" id="alertsList"></div>
+                </div>
+
+            </section>
+
+            <!-- Bottom Three Columns -->
+            <section class="three-col">
+
+                <!-- Top Processes -->
+                <div class="stat-box">
+                    <div class="stat-box-head">
+                        <h3><i class="fas fa-microchip" style="color:var(--accent-fastapi);margin-right:6px;font-size:11px;"></i>Top Processes by CPU</h3>
+                        <span class="stat-tag" style="background:var(--accent-fastapi-dim);color:var(--accent-fastapi);">live</span>
+                    </div>
+                    <div class="proc-list" id="procList"></div>
+                </div>
+
+                <!-- Docker Containers -->
+                <div class="stat-box">
+                    <div class="stat-box-head">
+                        <h3><i class="fab fa-docker" style="color:var(--accent-docker);margin-right:6px;font-size:12px;"></i>Docker Containers</h3>
+                        <span class="stat-tag" style="background:var(--accent-docker-dim);color:var(--accent-docker);" id="dockerCount">0 total</span>
+                    </div>
+                    <div class="docker-list" id="dockerList"></div>
+                </div>
+
+                <!-- Prometheus Targets -->
+                <div class="stat-box">
+                    <div class="stat-box-head">
+                        <h3><i class="fas fa-bullseye" style="color:var(--accent-prometheus);margin-right:6px;font-size:11px;"></i>Prometheus Targets</h3>
+                        <span class="stat-tag" style="background:var(--healthy-dim);color:var(--healthy);" id="targetUp">0/0 up</span>
+                    </div>
+                    <div class="target-list" id="targetList"></div>
+                </div>
+
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    /* ===== Constants ===== */
+    const CIRC = 2 * Math.PI * 19; // ~119.38 gauge circumference
+
+    /* ===== Simulated Data ===== */
+    let m = { cpu: 21.3, mem: 90.0, disk: 44.7, net: 18.75 };
+    let prev = { ...m };
+
+    const HIST = 30;
+    let hCpu = Array.from({ length: HIST }, () => 15 + Math.random() * 20);
+    let hMem = Array.from({ length: HIST }, () => 82 + Math.random() * 12);
+    let hNet = Array.from({ length: HIST }, () => 8 + Math.random() * 18);
+
+    /* Alerts data — double-encoded with severity labels */
+    const alerts = [
+        { sev: 'critical', title: 'Memory threshold exceeded', desc: 'Usage at 90% — approaching OOM kill threshold', time: '2m ago' },
+        { sev: 'critical', title: 'PostgreSQL connection pool exhausted', desc: 'max_connections (100) reached on db-primary', time: '7m ago' },
+        { sev: 'warning', title: 'High disk I/O latency on /dev/sda1', desc: 'Average read latency 45ms (threshold: 20ms)', time: '12m ago' },
+        { sev: 'critical', title: 'Container worker-3 exited', desc: 'Exit code 137 (OOMKilled) — restart policy: always', time: '18m ago' },
+        { sev: 'warning', title: 'Swap usage climbing', desc: '2.1 GB / 8 GB used (26%)', time: '25m ago' },
+        { sev: 'info', title: 'FastAPI worker thread pool expanded', desc: 'Uvicorn scaled from 4 to 8 workers', time: '32m ago' },
+        { sev: 'healthy', title: 'SSL certificate auto-renewed', desc: 'api.example.com valid until 2026-01-15', time: '45m ago' },
+        { sev: 'info', title: 'Prometheus scrape completed', desc: 'Full scrape cycle in 1.24s — 847 targets', time: '1h ago' },
+    ];
+
+    /* Process data — colors from chart palette */
+    let procs = [
+        { name: 'uvicorn', cpu: 28.4, color: 'var(--line-cyan)' },
+        { name: 'postgres', cpu: 19.1, color: 'var(--line-violet)' },
+        { name: 'nginx', cpu: 11.6, color: 'var(--line-emerald)' },
+        { name: 'redis-server', cpu: 7.2, color: 'var(--line-amber)' },
+        { name: 'prometheus', cpu: 4.8, color: 'var(--line-rose)' },
+    ];
+
+    /* Docker containers — double-encoded status */
+    const dockers = [
+        { name: 'api-gateway', image: 'fastapi:1.0.2', state: 'running' },
+        { name: 'worker-1', image: 'celery:5.3', state: 'running' },
+        { name: 'worker-2', image: 'celery:5.3', state: 'running' },
+        { name: 'worker-3', image: 'celery:5.3', state: 'exited' },
+        { name: 'postgres-db', image: 'postgres:16', state: 'running' },
+        { name: 'redis-cache', image: 'redis:7-alpine', state: 'running' },
+        { name: 'prometheus', image: 'prom/prometheus:v2.48', state: 'running' },
+        { name: 'grafana', image: 'grafana/grafana:10.2', state: 'restarting' },
+    ];
+
+    /* Prometheus targets */
+    const targets = [
+        { name: 'fastapi:8000/metrics', up: true, latency: '1.2ms' },
+        { name: 'postgres:9187', up: true, latency: '3.4ms' },
+        { name: 'redis:9121', up: true, latency: '0.8ms' },
+        { name: 'node-exporter:9100', up: true, latency: '2.1ms' },
+        { name: 'cadvisor:8080', up: true, latency: '5.7ms' },
+        { name: 'blackbox:9115', up: false, latency: 'timeout' },
+    ];
+
+    /* ===== Helpers ===== */
+    function setGauge(id, pct) {
+        const el = document.getElementById(id);
+        if (el) el.style.strokeDashoffset = CIRC - (CIRC * Math.min(pct, 100) / 100);
+    }
+
+    function statusDot(pct) {
+        if (pct >= 85) return 'crit';
+        if (pct >= 70) return 'warn';
+        return 'ok';
+    }
+
+    function setTrend(id, delta) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const d = parseFloat(delta);
+        if (d > 0.5) {
+            el.innerHTML = '<i class="fas fa-arrow-up"></i> +' + d.toFixed(1) + '%';
+            el.className = 'm-trend up';
+        } else if (d < -0.5) {
+            el.innerHTML = '<i class="fas fa-arrow-down"></i> ' + d.toFixed(1) + '%';
+            el.className = 'm-trend down';
+        } else {
+            el.innerHTML = '<i class="fas fa-minus"></i> 0.0%';
+            el.className = 'm-trend flat';
+        }
+    }
+
+    function rw(cur, min, max, step) {
+        return Math.min(max, Math.max(min, cur + (Math.random() - 0.5) * step));
+    }
+
+    function timeLabels(n) {
+        const out = [];
+        const now = Date.now();
+        for (let i = n - 1; i >= 0; i--) {
+            const t = new Date(now - i * 120000);
+            out.push(t.getHours().toString().padStart(2, '0') + ':' + t.getMinutes().toString().padStart(2, '0'));
+        }
+        return out;
+    }
+
+    /* ===== Render Static Lists ===== */
+    function renderAlerts() {
+        const el = document.getElementById('alertsList');
+        const firing = alerts.filter(a => a.sev === 'critical').length;
+        document.getElementById('alertCount').textContent = firing + ' firing';
+        el.innerHTML = alerts.map(a => `
+            <div class="alert-row">
+                <div class="alert-dot ${a.sev}"></div>
+                <div class="alert-body">
+                    <div class="alert-title">${a.title} <span class="alert-severity ${a.sev}">${a.sev}</span></div>
+                    <div class="alert-desc">${a.desc}</div>
+                </div>
+                <div class="alert-time">${a.time}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderProcs() {
+        const el = document.getElementById('procList');
+        el.innerHTML = procs.map(p => `
+            <div class="proc-row">
+                <div class="proc-name" title="${p.name}">${p.name}</div>
+                <div class="proc-bar-bg"><div class="proc-bar" style="width:${Math.min(p.cpu, 100)}%;background:${p.color};"></div></div>
+                <div class="proc-val">${p.cpu.toFixed(1)}%</div>
+            </div>
+        `).join('');
+    }
+
+    function renderDocker() {
+        const el = document.getElementById('dockerList');
+        const running = dockers.filter(d => d.state === 'running').length;
+        document.getElementById('dockerCount').textContent = running + '/' + dockers.length + ' up';
+        el.innerHTML = dockers.map(d => `
+            <div class="docker-row">
+                <div class="docker-status-dot ${d.state}"></div>
+                <div class="docker-info">
+                    <div class="d-name">${d.name}</div>
+                    <div class="d-image">${d.image}</div>
+                </div>
+                <span class="docker-state ${d.state}">${d.state}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderTargets() {
+        const el = document.getElementById('targetList');
+        const up = targets.filter(t => t.up).length;
+        document.getElementById('targetUp').textContent = up + '/' + targets.length + ' up';
+        el.innerHTML = targets.map(t => `
+            <div class="target-row">
+                <div class="target-status ${t.up ? 'up' : 'down'}"></div>
+                <div class="target-name" title="${t.name}">${t.name}</div>
+                <div class="target-latency" style="color:${t.up ? 'var(--text-muted)' : 'var(--critical)'};">${t.latency}</div>
+            </div>
+        `).join('');
+    }
+
+    /* ===== Chart.js — Main Prometheus Chart ===== */
+    let mainChart;
+    function initChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+
+        /* Gradient fills: 15% opacity top → 0% opacity bottom for grid readability */
+        const gCyan = ctx.createLinearGradient(0, 0, 0, 240);
+        gCyan.addColorStop(0, 'rgba(6,182,212,0.15)');
+        gCyan.addColorStop(1, 'rgba(6,182,212,0.0)');
+
+        const gViolet = ctx.createLinearGradient(0, 0, 0, 240);
+        gViolet.addColorStop(0, 'rgba(139,92,246,0.15)');
+        gViolet.addColorStop(1, 'rgba(139,92,246,0.0)');
+
+        const gEmerald = ctx.createLinearGradient(0, 0, 0, 240);
+        gEmerald.addColorStop(0, 'rgba(16,185,129,0.15)');
+        gEmerald.addColorStop(1, 'rgba(16,185,129,0.0)');
+
+        mainChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeLabels(HIST),
+                datasets: [
+                    {
+                        label: 'CPU %',
+                        data: [...hCpu],
+                        borderColor: '#06B6D4',
+                        backgroundColor: gCyan,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#06B6D4',
+                        pointHoverBorderColor: '#F8FAFC',
+                        pointHoverBorderWidth: 2,
+                    },
+                    {
+                        label: 'Memory %',
+                        data: [...hMem],
+                        borderColor: '#8B5CF6',
+                        backgroundColor: gViolet,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#8B5CF6',
+                        pointHoverBorderColor: '#F8FAFC',
+                        pointHoverBorderWidth: 2,
+                    },
+                    {
+                        label: 'Network MB/s',
+                        data: [...hNet],
+                        borderColor: '#10B981',
+                        backgroundColor: gEmerald,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#10B981',
+                        pointHoverBorderColor: '#F8FAFC',
+                        pointHoverBorderWidth: 2,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            color: '#94A3B8',
+                            font: { size: 10, family: "'JetBrains Mono', monospace", weight: '500' },
+                            boxWidth: 10, boxHeight: 3, borderRadius: 2, useBorderRadius: true, padding: 14,
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1E293B',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        titleColor: '#F8FAFC',
+                        bodyColor: '#94A3B8',
+                        titleFont: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: '700' },
+                        bodyFont: { size: 10, family: "'JetBrains Mono', monospace" },
+                        padding: 10,
+                        cornerRadius: 8,
+                        boxWidth: 8, boxHeight: 8, boxPadding: 4,
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(51,65,85,0.3)', drawBorder: false },
+                        ticks: { color: '#64748B', font: { size: 9, family: "'JetBrains Mono', monospace" }, maxTicksLimit: 8, maxRotation: 0 },
+                        border: { display: false }
+                    },
+                    y: {
+                        grid: { color: 'rgba(51,65,85,0.3)', drawBorder: false },
+                        ticks: { color: '#64748B', font: { size: 9, family: "'JetBrains Mono', monospace" }, callback: v => v + '%', stepSize: 25 },
+                        border: { display: false },
+                        min: 0, max: 100,
+                    }
+                }
+            }
+        });
+    }
+
+    /* ===== Update Loop ===== */
+    function update() {
+        prev = { ...m };
+
+        m.cpu = rw(m.cpu, 5, 90, 8);
+        m.mem = rw(m.mem, 55, 98, 3);
+        m.disk = rw(m.disk, 30, 70, 1.5);
+        m.net = rw(m.net, 3, 50, 5);
+
+        /* Card values */
+        document.getElementById('cpuVal').textContent = m.cpu.toFixed(1) + '%';
+        document.getElementById('memVal').textContent = m.mem.toFixed(0) + '%';
+        document.getElementById('diskVal').textContent = m.disk.toFixed(1) + '%';
+        document.getElementById('netVal').textContent = m.net.toFixed(1) + ' MB';
+
+        /* Sub labels */
+        document.getElementById('memSub').textContent = (m.mem / 100 * 16).toFixed(1) + ' / 16 GB';
+        document.getElementById('diskSub').textContent = Math.round(m.disk / 100 * 500) + ' / 500 GB';
+
+        /* Double-encoded status dots — color + semantic class */
+        document.getElementById('cpuDot').className = 'm-status-dot ' + statusDot(m.cpu);
+        document.getElementById('memDot').className = 'm-status-dot ' + statusDot(m.mem);
+        document.getElementById('diskDot').className = 'm-status-dot ' + statusDot(m.disk);
+        document.getElementById('netDot').className = 'm-status-dot ' + statusDot(m.net / 50 * 100);
+
+        /* Gauges */
+        setGauge('cpuGauge', m.cpu);
+        setGauge('memGauge', m.mem);
+        setGauge('diskGauge', m.disk);
+        setGauge('netGauge', m.net / 50 * 100);
+
+        /* Trends */
+        setTrend('cpuTrend', ((m.cpu - prev.cpu) / Math.max(prev.cpu, 0.1)) * 100);
+        setTrend('memTrend', ((m.mem - prev.mem) / Math.max(prev.mem, 0.1)) * 100);
+        setTrend('diskTrend', ((m.disk - prev.disk) / Math.max(prev.disk, 0.1)) * 100);
+        setTrend('netTrend', ((m.net - prev.net) / Math.max(prev.net, 0.1)) * 100);
+
+        /* History */
+        hCpu.push(m.cpu); hCpu.shift();
+        hMem.push(m.mem); hMem.shift();
+        hNet.push(m.net); hNet.shift();
+
+        if (mainChart) {
+            mainChart.data.labels = timeLabels(HIST);
+            mainChart.data.datasets[0].data = [...hCpu];
+            mainChart.data.datasets[1].data = [...hMem];
+            mainChart.data.datasets[2].data = [...hNet];
+            mainChart.update('none');
+        }
+
+        /* Processes */
+        procs.forEach(p => { p.cpu = Math.max(0.5, rw(p.cpu, 0.5, 55, 4)); });
+        procs.sort((a, b) => b.cpu - a.cpu);
+        renderProcs();
+    }
+
+    /* ===== Clock ===== */
+    function tick() {
+        const n = new Date();
+        document.getElementById('clock').textContent =
+            n.getHours().toString().padStart(2, '0') + ':' +
+            n.getMinutes().toString().padStart(2, '0') + ':' +
+            n.getSeconds().toString().padStart(2, '0');
+    }
+
+    /* ===== Tab Switching ===== */
+    document.querySelectorAll('.p-tab').forEach(tab => {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.p-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const v = { '1h': 6, '6h': 12, '24h': 20, '7d': 30 }[this.dataset.range] || 8;
+            for (let i = 0; i < HIST; i++) {
+                hCpu[i] = Math.min(95, Math.max(5, hCpu[i] + (Math.random() - 0.5) * v));
+                hMem[i] = Math.min(99, Math.max(50, hMem[i] + (Math.random() - 0.5) * v * 0.4));
+                hNet[i] = Math.min(60, Math.max(2, hNet[i] + (Math.random() - 0.5) * v));
+            }
+            if (mainChart) {
+                mainChart.data.datasets[0].data = [...hCpu];
+                mainChart.data.datasets[1].data = [...hMem];
+                mainChart.data.datasets[2].data = [...hNet];
+                mainChart.update();
+            }
+        });
+    });
+
+    /* ===== Mobile ===== */
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    document.getElementById('menuBtn').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    });
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    });
+
+    /* Sidebar nav */
+    document.querySelectorAll('.sidebar-nav a').forEach(a => {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelectorAll('.sidebar-nav a').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        });
+    });
+
+    /* ===== Init ===== */
+    function init() {
+        renderAlerts();
+        renderProcs();
+        renderDocker();
+        renderTargets();
+        initChart();
+        tick();
+        update();
+
+        setInterval(tick, 1000);
+        setInterval(update, 2000);
+    }
+
+    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
+</script>
+</body>
+</html>
