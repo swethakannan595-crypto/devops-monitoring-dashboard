@@ -1,0 +1,15 @@
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'devopsalertmanager0@gmail.com'
+  smtp_auth_username: 'devopsalertmanager0@gmail.com'
+  smtp_auth_password: 'ajrt ywyg tbii gaow'
+  smtp_require_tls: true
+
+route:
+  receiver: gmail-alert
+
+receivers:
+  - name: gmail-alert
+    email_configs:
+      - to: 'devopsalertmanager0@gmail.com'
+        send_resolved: true
