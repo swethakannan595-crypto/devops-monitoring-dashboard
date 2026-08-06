@@ -1,0 +1,17 @@
+.venv
+.git
+.github
+__pycache__
+*.pyc
+
+prometheus
+structure.txt
+
+.env
+.env.txt
+
+README.md
+LICENSE
+
+.vscode
+.idea
