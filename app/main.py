@@ -6,13 +6,35 @@ from prometheus_fastapi_instrumentator import Instrumentator
 import psutil
 import time
 
-# IMPORTANT: Import custom Prometheus metrics
+# ==========================================================
+# Custom Prometheus Metrics
+# ==========================================================
+
 from app.monitoring import prometheus_metrics
+
+# ==========================================================
+# Docker Monitoring Router
+# ==========================================================
+
+from app.api.docker import router as docker_router
+
+
+# ==========================================================
+# FastAPI Application
+# ==========================================================
 
 app = FastAPI(
     title="DevOps Monitoring Dashboard",
     version="1.0.0",
 )
+
+
+# ==========================================================
+# Docker Router
+# ==========================================================
+
+app.include_router(docker_router)
+
 
 # ==========================================================
 # Prometheus Metrics
@@ -20,11 +42,13 @@ app = FastAPI(
 
 Instrumentator().instrument(app).expose(app)
 
+
 # ==========================================================
 # Templates
 # ==========================================================
 
 templates = Jinja2Templates(directory="templates")
+
 
 # ==========================================================
 # Home
@@ -36,6 +60,7 @@ async def home():
         "message": "DevOps Monitoring Dashboard API Running",
         "status": "success",
     }
+
 
 # ==========================================================
 # Dashboard
@@ -49,6 +74,7 @@ async def dashboard(request: Request):
         context={},
     )
 
+
 # ==========================================================
 # System Monitoring API
 # ==========================================================
@@ -57,8 +83,11 @@ async def dashboard(request: Request):
 async def system_monitor():
 
     cpu = psutil.cpu_percent(interval=1)
+
     memory = psutil.virtual_memory()
+
     disk = psutil.disk_usage("C:\\")
+
     network = psutil.net_io_counters()
 
     return {
@@ -66,22 +95,27 @@ async def system_monitor():
             "usage": cpu,
             "unit": "%",
         },
+
         "memory": {
             "total": round(memory.total / (1024**3), 2),
             "used": round(memory.used / (1024**3), 2),
             "percentage": memory.percent,
         },
+
         "disk": {
             "total": round(disk.total / (1024**3), 2),
             "used": round(disk.used / (1024**3), 2),
             "percentage": disk.percent,
         },
+
         "network": {
             "sent": round(network.bytes_sent / (1024**2), 2),
             "received": round(network.bytes_recv / (1024**2), 2),
         },
+
         "timestamp": time.time(),
     }
+
 
 # ==========================================================
 # Health Check
