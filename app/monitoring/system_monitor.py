@@ -7,12 +7,14 @@ class SystemMonitor:
 
     @staticmethod
     def get_cpu_usage():
+        frequency = psutil.cpu_freq()
+
         return {
             "cpu_usage": psutil.cpu_percent(interval=1),
             "physical_cores": psutil.cpu_count(logical=False),
             "logical_cores": psutil.cpu_count(logical=True),
-            "cpu_frequency": psutil.cpu_freq().current if psutil.cpu_freq() else None
-    }
+            "cpu_frequency": frequency.current if frequency else None
+        }
 
     @staticmethod
     def get_memory_usage():
@@ -27,7 +29,8 @@ class SystemMonitor:
 
     @staticmethod
     def get_disk_usage():
-        disk = psutil.disk_usage('/')
+        # Linux/Docker filesystem
+        disk = psutil.disk_usage("/")
 
         return {
             "total": round(disk.total / (1024 ** 3), 2),
@@ -45,7 +48,7 @@ class SystemMonitor:
             "bytes_received": network.bytes_recv,
             "packets_sent": network.packets_sent,
             "packets_received": network.packets_recv
-    }
+        }
 
     @staticmethod
     def get_system_info():
@@ -65,16 +68,18 @@ class SystemMonitor:
         processes = []
 
         for process in psutil.process_iter(
-    ['pid', 'name', 'status', 'memory_percent']
-):
+            ["pid", "name", "status", "memory_percent"]
+        ):
             try:
                 processes.append({
-    "pid": process.info["pid"],
-    "name": process.info["name"],
-    "status": process.info["status"],
-    "memory_percent": round(process.info["memory_percent"], 2)
-})
-            except Exception:
+                    "pid": process.info["pid"],
+                    "name": process.info["name"],
+                    "status": process.info["status"],
+                    "memory_percent": round(
+                        process.info["memory_percent"], 2
+                    )
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
 
         return processes
