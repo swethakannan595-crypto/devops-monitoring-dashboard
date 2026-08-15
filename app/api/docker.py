@@ -1,177 +1,202 @@
-from fastapi import APIRouter
 import docker
-from docker.errors import DockerException
+from fastapi import APIRouter
 
 router = APIRouter(
     prefix="/docker",
     tags=["Docker Monitoring"]
 )
 
-# ---------------------------------------
-# Connect to Docker safely
-# ---------------------------------------
 
-try:
-    client = docker.from_env()
-    docker_available = True
-except DockerException:
-    client = None
-    docker_available = False
+def get_docker_client():
+    """
+    Create a Docker client using the Docker socket
+    mounted inside the container.
+    """
+    return docker.from_env()
 
 
-# ---------------------------------------
+# ==========================================================
 # Docker Status
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/status")
-def docker_status():
-    if not docker_available:
+async def docker_status():
+
+    try:
+        client = get_docker_client()
+
+        client.ping()
+        version = client.version()
+
         return {
-            "docker": "Not Running",
-            "message": "Docker Desktop is not running."
+            "docker": "Running",
+            "version": version.get("Version")
         }
 
-    return {
-        "docker": "Running",
-        "version": client.version()["Version"]
-    }
+    except Exception as e:
+        return {
+            "docker": "Unavailable",
+            "error": str(e)
+        }
 
 
-# ---------------------------------------
+# ==========================================================
 # List All Containers
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/containers")
-def list_containers():
+async def list_containers():
 
-    if not docker_available:
+    try:
+        client = get_docker_client()
+
+        containers = client.containers.list(
+            all=True
+        )
+
+        result = []
+
+        for container in containers:
+            result.append({
+                "id": container.short_id,
+                "name": container.name,
+                "image": container.image.tags,
+                "status": container.status
+            })
+
         return {
-            "docker": "Not Running",
-            "containers": []
+            "count": len(result),
+            "containers": result
         }
 
-    containers = []
-
-    for container in client.containers.list(all=True):
-
-        containers.append({
-            "id": container.short_id,
-            "name": container.name,
-            "image": container.image.tags,
-            "status": container.status
-        })
-
-    return {
-        "count": len(containers),
-        "containers": containers
-    }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
 
 
-# ---------------------------------------
+# ==========================================================
 # Running Containers
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/running")
-def running_containers():
+async def running_containers():
 
-    if not docker_available:
+    try:
+        client = get_docker_client()
+
+        containers = client.containers.list()
+
+        result = []
+
+        for container in containers:
+            result.append({
+                "id": container.short_id,
+                "name": container.name,
+                "status": container.status
+            })
+
         return {
-            "docker": "Not Running",
-            "running_containers": []
+            "count": len(result),
+            "running_containers": result
         }
 
-    data = []
-
-    for container in client.containers.list():
-
-        data.append({
-            "id": container.short_id,
-            "name": container.name,
-            "status": container.status
-        })
-
-    return {
-        "count": len(data),
-        "running_containers": data
-    }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
 
 
-# ---------------------------------------
+# ==========================================================
 # Docker Images
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/images")
-def docker_images():
+async def docker_images():
 
-    if not docker_available:
+    try:
+        client = get_docker_client()
+
+        images = client.images.list()
+
+        result = []
+
+        for image in images:
+            result.append({
+                "id": image.short_id,
+                "tags": image.tags
+            })
+
         return {
-            "docker": "Not Running",
-            "images": []
+            "count": len(result),
+            "images": result
         }
 
-    images = []
-
-    for image in client.images.list():
-
-        images.append({
-            "id": image.short_id,
-            "tags": image.tags
-        })
-
-    return {
-        "count": len(images),
-        "images": images
-    }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
 
 
-# ---------------------------------------
+# ==========================================================
 # Docker Information
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/info")
-def docker_info():
+async def docker_info():
 
-    if not docker_available:
+    try:
+        client = get_docker_client()
+
+        info = client.info()
+
+        memory_gb = round(
+            info.get("MemTotal", 0) / (1024 ** 3),
+            2
+        )
+
         return {
-            "docker": "Not Running"
+            "containers": info.get("Containers"),
+            "running": info.get("ContainersRunning"),
+            "paused": info.get("ContainersPaused"),
+            "stopped": info.get("ContainersStopped"),
+            "images": info.get("Images"),
+            "driver": info.get("Driver"),
+            "operating_system": info.get("OperatingSystem"),
+            "architecture": info.get("Architecture"),
+            "cpus": info.get("NCPU"),
+            "memory": memory_gb
         }
 
-    info = client.info()
-
-    return {
-        "containers": info["Containers"],
-        "running": info["ContainersRunning"],
-        "paused": info["ContainersPaused"],
-        "stopped": info["ContainersStopped"],
-        "images": info["Images"],
-        "driver": info["Driver"],
-        "operating_system": info["OperatingSystem"],
-        "architecture": info["Architecture"],
-        "cpus": info["NCPU"],
-        "memory": round(info["MemTotal"] / (1024 ** 3), 2)
-    }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
 
 
-# ---------------------------------------
+# ==========================================================
 # Docker Container Statistics
-# ---------------------------------------
+# ==========================================================
 
 @router.get("/stats")
-def docker_stats():
+async def docker_stats():
 
-    if not docker_available:
-        return {
-            "docker": "Not Running",
-            "containers": []
-        }
+    try:
+        client = get_docker_client()
 
-    stats_data = []
+        containers = client.containers.list()
 
-    for container in client.containers.list():
+        result = []
 
-        try:
+        for container in containers:
 
-            stats = container.stats(stream=False)
+            stats = container.stats(
+                stream=False
+            )
+
+            # --------------------------------------------------
+            # CPU calculation
+            # --------------------------------------------------
 
             cpu_delta = (
                 stats["cpu_stats"]["cpu_usage"]["total_usage"]
@@ -185,88 +210,130 @@ def docker_stats():
 
             cpu_percent = 0.0
 
-            if (
-                system_delta > 0
-                and "percpu_usage"
-                in stats["cpu_stats"]["cpu_usage"]
-            ):
+            if system_delta > 0 and cpu_delta > 0:
+
+                online_cpus = stats["cpu_stats"].get(
+                    "online_cpus",
+                    1
+                )
 
                 cpu_percent = (
                     cpu_delta
                     / system_delta
-                ) * len(
-                    stats["cpu_stats"]["cpu_usage"]["percpu_usage"]
-                ) * 100
+                    * online_cpus
+                    * 100.0
+                )
 
-            memory_usage = (
-                stats["memory_stats"]["usage"]
-                / (1024 * 1024)
+            # --------------------------------------------------
+            # Memory
+            # --------------------------------------------------
+
+            memory_stats = stats.get(
+                "memory_stats",
+                {}
             )
 
-            memory_limit = (
-                stats["memory_stats"]["limit"]
-                / (1024 * 1024)
+            memory_usage = memory_stats.get(
+                "usage",
+                0
             )
 
-            memory_percent = (
-                memory_usage
-                / memory_limit
-            ) * 100
+            memory_limit = memory_stats.get(
+                "limit",
+                0
+            )
+
+            memory_usage_mb = round(
+                memory_usage / (1024 ** 2),
+                2
+            )
+
+            memory_limit_mb = round(
+                memory_limit / (1024 ** 2),
+                2
+            )
+
+            memory_percent = 0.0
+
+            if memory_limit > 0:
+                memory_percent = round(
+                    (memory_usage / memory_limit) * 100,
+                    2
+                )
+
+            # --------------------------------------------------
+            # Network
+            # --------------------------------------------------
 
             network_rx = 0
             network_tx = 0
 
-            if "networks" in stats:
+            networks = stats.get(
+                "networks",
+                {}
+            )
 
-                for net in stats["networks"].values():
+            for network in networks.values():
 
-                    network_rx += net.get("rx_bytes", 0)
-                    network_tx += net.get("tx_bytes", 0)
+                network_rx += network.get(
+                    "rx_bytes",
+                    0
+                )
 
-            stats_data.append({
+                network_tx += network.get(
+                    "tx_bytes",
+                    0
+                )
 
+            # --------------------------------------------------
+            # Result
+            # --------------------------------------------------
+
+            result.append({
                 "id": container.short_id,
-
                 "name": container.name,
-
                 "image": container.image.tags,
-
                 "status": container.status,
 
-                "cpu_percent": round(cpu_percent, 2),
-
-                "memory_usage_mb": round(memory_usage, 2),
-
-                "memory_limit_mb": round(memory_limit, 2),
-
-                "memory_percent": round(memory_percent, 2),
-
-                "network_rx_mb": round(
-                    network_rx / (1024 * 1024), 2
+                "cpu_percent": round(
+                    cpu_percent,
+                    2
                 ),
 
-                "network_tx_mb": round(
-                    network_tx / (1024 * 1024), 2
-                ),
+                "memory_usage_mb":
+                    memory_usage_mb,
 
-                "started_at": container.attrs["State"]["StartedAt"]
+                "memory_limit_mb":
+                    memory_limit_mb,
 
+                "memory_percent":
+                    memory_percent,
+
+                "network_rx_mb":
+                    round(
+                        network_rx / (1024 ** 2),
+                        2
+                    ),
+
+                "network_tx_mb":
+                    round(
+                        network_tx / (1024 ** 2),
+                        2
+                    ),
+
+                "started_at":
+                    container.attrs[
+                        "State"
+                    ].get("StartedAt")
             })
 
-        except Exception as e:
+        return {
+            "count": len(result),
+            "containers": result
+        }
 
-            stats_data.append({
+    except Exception as e:
 
-                "name": container.name,
-
-                "error": str(e)
-
-            })
-
-    return {
-
-        "count": len(stats_data),
-
-        "containers": stats_data
-
-    }
+        return {
+            "error": str(e)
+        }

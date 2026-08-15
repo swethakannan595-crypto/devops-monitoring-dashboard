@@ -1,27 +1,40 @@
 from fastapi import APIRouter
-
-from app.monitoring.system_monitor import SystemMonitor
+import psutil
 
 router = APIRouter(
-    prefix="/process",
+    prefix="/api/processes",
     tags=["Process Monitoring"]
 )
 
 
-@router.get("/")
-def get_processes():
+@router.get("")
+async def get_processes():
+    processes = []
+
+    for process in psutil.process_iter(
+        ["pid", "name", "status", "memory_percent", "cpu_percent"]
+    ):
+        try:
+            processes.append({
+                "pid": process.info["pid"],
+                "name": process.info["name"],
+                "status": process.info["status"],
+                "cpu_percent": round(
+                    process.info["cpu_percent"] or 0, 2
+                ),
+                "memory_percent": round(
+                    process.info["memory_percent"] or 0, 2
+                )
+            })
+
+        except (
+            psutil.NoSuchProcess,
+            psutil.AccessDenied,
+            psutil.ZombieProcess
+        ):
+            continue
+
     return {
-        "count": len(SystemMonitor.get_running_processes()),
-        "processes": SystemMonitor.get_running_processes()
-    }
-
-
-@router.get("/top10")
-def top_processes():
-
-    processes = SystemMonitor.get_running_processes()
-
-    return {
-        "count": min(10, len(processes)),
-        "processes": processes[:10]
+        "count": len(processes),
+        "processes": processes
     }

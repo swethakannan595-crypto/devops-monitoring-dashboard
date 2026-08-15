@@ -1,13 +1,23 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.monitoring import prometheus_metrics
-from app.monitoring.system_monitor import SystemMonitor
+import psutil
+import time
+
+# ==========================================================
+# Routers
+# ==========================================================
+
 from app.api.docker import router as docker_router
 
-import time
+# ==========================================================
+# Custom Prometheus Metrics
+# ==========================================================
+
+from app.monitoring import prometheus_metrics
 
 
 # ==========================================================
@@ -16,12 +26,12 @@ import time
 
 app = FastAPI(
     title="DevOps Monitoring Dashboard",
-    version="1.0.0",
+    version="1.0.0"
 )
 
 
 # ==========================================================
-# Prometheus Metrics
+# Prometheus Instrumentation
 # ==========================================================
 
 Instrumentator().instrument(app).expose(app)
@@ -31,17 +41,17 @@ Instrumentator().instrument(app).expose(app)
 # Templates
 # ==========================================================
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory="templates"
+)
 
 
 # ==========================================================
-# Docker Monitoring Routes
+# Include Routers
 # ==========================================================
 
 app.include_router(
-    docker_router,
-    prefix="/docker",
-    tags=["Docker Monitoring"],
+    docker_router
 )
 
 
@@ -51,9 +61,13 @@ app.include_router(
 
 @app.get("/")
 async def home():
+
     return {
-        "message": "DevOps Monitoring Dashboard API Running",
-        "status": "success",
+        "message":
+            "DevOps Monitoring Dashboard API Running",
+
+        "status":
+            "success"
     }
 
 
@@ -61,81 +75,181 @@ async def home():
 # Dashboard
 # ==========================================================
 
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.get(
+    "/dashboard",
+    response_class=HTMLResponse
+)
 async def dashboard(request: Request):
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={},
+        context={}
     )
 
 
 # ==========================================================
-# System Monitoring API
+# System Monitoring
 # ==========================================================
 
 @app.get("/api/system")
 async def system_monitor():
 
-    cpu = SystemMonitor.get_cpu_usage()
-    memory = SystemMonitor.get_memory_usage()
-    disk = SystemMonitor.get_disk_usage()
-    network = SystemMonitor.get_network_usage()
+    # ------------------------------------------------------
+    # CPU
+    # ------------------------------------------------------
+
+    cpu_usage = psutil.cpu_percent(
+        interval=1
+    )
+
+    cpu_frequency = psutil.cpu_freq()
+
+    # ------------------------------------------------------
+    # Memory
+    # ------------------------------------------------------
+
+    memory = psutil.virtual_memory()
+
+    # ------------------------------------------------------
+    # Disk
+    #
+    # "/" works inside Linux/Docker.
+    # "C:\\" is used when running directly on Windows.
+    # ------------------------------------------------------
+
+    try:
+
+        disk_path = "/"
+
+        if hasattr(psutil, "WINDOWS"):
+
+            disk_path = "C:\\"
+
+        disk = psutil.disk_usage(
+            disk_path
+        )
+
+    except Exception:
+
+        disk = psutil.disk_usage("/")
+
+
+    # ------------------------------------------------------
+    # Network
+    # ------------------------------------------------------
+
+    network = psutil.net_io_counters()
+
+
+    # ------------------------------------------------------
+    # Response
+    # ------------------------------------------------------
 
     return {
+
         "cpu": {
-            "usage": cpu["cpu_usage"],
-            "physical_cores": cpu["physical_cores"],
-            "logical_cores": cpu["logical_cores"],
-            "frequency_mhz": cpu["cpu_frequency"],
-            "unit": "%",
+
+            "usage":
+                cpu_usage,
+
+            "physical_cores":
+                psutil.cpu_count(
+                    logical=False
+                ),
+
+            "logical_cores":
+                psutil.cpu_count(
+                    logical=True
+                ),
+
+            "frequency_mhz":
+                round(
+                    cpu_frequency.current,
+                    2
+                )
+                if cpu_frequency
+                else None,
+
+            "unit":
+                "%"
         },
+
 
         "memory": {
-            "total_gb": memory["total"],
-            "used_gb": memory["used"],
-            "available_gb": memory["available"],
-            "percentage": memory["percent"],
+
+            "total_gb":
+                round(
+                    memory.total /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "used_gb":
+                round(
+                    memory.used /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "available_gb":
+                round(
+                    memory.available /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "percentage":
+                memory.percent
         },
+
 
         "disk": {
-            "total_gb": disk["total"],
-            "used_gb": disk["used"],
-            "free_gb": disk["free"],
-            "percentage": disk["percent"],
+
+            "total_gb":
+                round(
+                    disk.total /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "used_gb":
+                round(
+                    disk.used /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "free_gb":
+                round(
+                    disk.free /
+                    (1024 ** 3),
+                    2
+                ),
+
+            "percentage":
+                disk.percent
         },
+
 
         "network": {
-            "bytes_sent": network["bytes_sent"],
-            "bytes_received": network["bytes_received"],
-            "packets_sent": network["packets_sent"],
-            "packets_received": network["packets_received"],
+
+            "bytes_sent":
+                network.bytes_sent,
+
+            "bytes_received":
+                network.bytes_recv,
+
+            "packets_sent":
+                network.packets_sent,
+
+            "packets_received":
+                network.packets_recv
         },
 
-        "timestamp": time.time(),
-    }
 
-
-# ==========================================================
-# System Information
-# ==========================================================
-
-@app.get("/api/system/info")
-async def system_info():
-    return SystemMonitor.get_system_info()
-
-
-# ==========================================================
-# Running Processes
-# ==========================================================
-
-@app.get("/api/system/processes")
-async def running_processes():
-    processes = SystemMonitor.get_running_processes()
-
-    return {
-        "count": len(processes),
-        "processes": processes,
+        "timestamp":
+            time.time()
     }
 
 
@@ -145,6 +259,7 @@ async def running_processes():
 
 @app.get("/health")
 async def health():
+
     return {
-        "status": "healthy",
+        "status": "healthy"
     }
