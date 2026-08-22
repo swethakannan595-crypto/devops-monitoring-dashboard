@@ -1,265 +1,149 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-import psutil
-import time
-
-# ==========================================================
-# Routers
-# ==========================================================
-
+from app.api.monitoring import router as monitoring_router
 from app.api.docker import router as docker_router
+from app.routers.processes import router as process_router
+from app.routers.service_monitor import router as service_router
 
-# ==========================================================
-# Custom Prometheus Metrics
-# ==========================================================
-
-from app.monitoring import prometheus_metrics
+from app.monitoring.prometheus_metrics import initialize_metrics
 
 
-# ==========================================================
-# FastAPI Application
-# ==========================================================
+# =========================================================
+# APPLICATION
+# =========================================================
 
 app = FastAPI(
     title="DevOps Monitoring Dashboard",
-    version="1.0.0"
+    description=(
+        "Real-time system, Docker, process, service "
+        "and Prometheus monitoring"
+    ),
+    version="1.0.0",
 )
 
 
-# ==========================================================
-# Prometheus Instrumentation
-# ==========================================================
+# =========================================================
+# PATHS
+# =========================================================
 
-Instrumentator().instrument(app).expose(app)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# ==========================================================
-# Templates
-# ==========================================================
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 templates = Jinja2Templates(
-    directory="templates"
+    directory=str(TEMPLATES_DIR)
 )
 
 
-# ==========================================================
-# Include Routers
-# ==========================================================
+# =========================================================
+# ROUTERS
+# =========================================================
 
-app.include_router(
-    docker_router
+app.include_router(monitoring_router)
+print("Monitoring router loaded successfully")
+
+app.include_router(docker_router)
+print("Docker router loaded successfully")
+
+app.router.routes.extend(process_router.routes)
+print("Process router loaded successfully")
+
+
+print("Service monitoring router loaded successfully")
+
+
+# =========================================================
+# PROMETHEUS METRICS INITIALIZATION
+# =========================================================
+app.router.routes.extend(service_router.routes)
+initialize_metrics()
+
+print("Prometheus metrics initialized")
+
+
+# =========================================================
+# ROOT
+# =========================================================
+
+@app.get(
+    "/",
+    include_in_schema=False
 )
+async def root():
+
+    return RedirectResponse(
+        url="/dashboard",
+        status_code=307
+    )
 
 
-# ==========================================================
-# Home
-# ==========================================================
-
-@app.get("/")
-async def home():
-
-    return {
-        "message":
-            "DevOps Monitoring Dashboard API Running",
-
-        "status":
-            "success"
-    }
-
-
-# ==========================================================
-# Dashboard
-# ==========================================================
+# =========================================================
+# DASHBOARD
+# =========================================================
 
 @app.get(
     "/dashboard",
-    response_class=HTMLResponse
+    include_in_schema=False
 )
 async def dashboard(request: Request):
 
     return templates.TemplateResponse(
         request=request,
-        name="index.html",
-        context={}
+        name="index.html"
     )
 
 
-# ==========================================================
-# System Monitoring
-# ==========================================================
+# =========================================================
+# HEALTH CHECK
+# =========================================================
 
-@app.get("/api/system")
-async def system_monitor():
+@app.get(
+    "/health",
+    include_in_schema=False
+)
+def health():
 
-    # ------------------------------------------------------
-    # CPU
-    # ------------------------------------------------------
+    return {
+        "status": "healthy",
+        "service": "devops-monitor-dashboard"
+    }
 
-    cpu_usage = psutil.cpu_percent(
-        interval=1
+
+# =========================================================
+# APPLICATION INFORMATION
+# =========================================================
+
+@app.get(
+    "/api/info"
+)
+def application_info():
+
+    return {
+        "name": "DevOps Monitoring Dashboard",
+        "version": "1.0.0",
+        "framework": "FastAPI",
+        "monitoring": "Prometheus",
+        "containerization": "Docker"
+    }
+
+
+# =========================================================
+# PROMETHEUS METRICS
+# =========================================================
+
+@app.get(
+    "/metrics",
+    include_in_schema=False
+)
+def metrics():
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
     )
-
-    cpu_frequency = psutil.cpu_freq()
-
-    # ------------------------------------------------------
-    # Memory
-    # ------------------------------------------------------
-
-    memory = psutil.virtual_memory()
-
-    # ------------------------------------------------------
-    # Disk
-    #
-    # "/" works inside Linux/Docker.
-    # "C:\\" is used when running directly on Windows.
-    # ------------------------------------------------------
-
-    try:
-
-        disk_path = "/"
-
-        if hasattr(psutil, "WINDOWS"):
-
-            disk_path = "C:\\"
-
-        disk = psutil.disk_usage(
-            disk_path
-        )
-
-    except Exception:
-
-        disk = psutil.disk_usage("/")
-
-
-    # ------------------------------------------------------
-    # Network
-    # ------------------------------------------------------
-
-    network = psutil.net_io_counters()
-
-
-    # ------------------------------------------------------
-    # Response
-    # ------------------------------------------------------
-
-    return {
-
-        "cpu": {
-
-            "usage":
-                cpu_usage,
-
-            "physical_cores":
-                psutil.cpu_count(
-                    logical=False
-                ),
-
-            "logical_cores":
-                psutil.cpu_count(
-                    logical=True
-                ),
-
-            "frequency_mhz":
-                round(
-                    cpu_frequency.current,
-                    2
-                )
-                if cpu_frequency
-                else None,
-
-            "unit":
-                "%"
-        },
-
-
-        "memory": {
-
-            "total_gb":
-                round(
-                    memory.total /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "used_gb":
-                round(
-                    memory.used /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "available_gb":
-                round(
-                    memory.available /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "percentage":
-                memory.percent
-        },
-
-
-        "disk": {
-
-            "total_gb":
-                round(
-                    disk.total /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "used_gb":
-                round(
-                    disk.used /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "free_gb":
-                round(
-                    disk.free /
-                    (1024 ** 3),
-                    2
-                ),
-
-            "percentage":
-                disk.percent
-        },
-
-
-        "network": {
-
-            "bytes_sent":
-                network.bytes_sent,
-
-            "bytes_received":
-                network.bytes_recv,
-
-            "packets_sent":
-                network.packets_sent,
-
-            "packets_received":
-                network.packets_recv
-        },
-
-
-        "timestamp":
-            time.time()
-    }
-
-
-# ==========================================================
-# Health Check
-# ==========================================================
-
-@app.get("/health")
-async def health():
-
-    return {
-        "status": "healthy"
-    }

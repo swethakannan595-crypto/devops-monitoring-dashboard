@@ -16,36 +16,36 @@ def get_all_services():
         win32service.SC_MANAGER_ENUMERATE_SERVICE
     )
 
-    services = win32service.EnumServicesStatus(scm)
+    try:
+        services = win32service.EnumServicesStatus(scm)
 
-    service_list = []
+        service_list = []
 
-    for service in services:
+        for service in services:
 
-        status_code = service[2][1]
+            status_code = service[2][1]
 
-        if status_code == 4:
-            status = "running"
+            if status_code == 4:
+                status = "running"
 
-        elif status_code == 1:
-            status = "stopped"
+            elif status_code == 1:
+                status = "stopped"
 
-        else:
-            status = "unknown"
+            else:
+                status = "unknown"
 
+            service_list.append(
+                {
+                    "service_name": service[0].strip(),
+                    "display_name": service[1].strip(),
+                    "status": status
+                }
+            )
 
-        service_list.append(
-            {
-                "service_name": service[0],
-                "display_name": service[1],
-                "status": status
-            }
-        )
+        return service_list
 
-    win32service.CloseServiceHandle(scm)
-
-    return service_list
-
+    finally:
+        win32service.CloseServiceHandle(scm)
 
 
 # ---------------------------------------
@@ -61,7 +61,6 @@ def list_services():
         "total_services": len(services),
         "services": services
     }
-
 
 
 # ---------------------------------------
@@ -85,7 +84,6 @@ def running_services():
     }
 
 
-
 # ---------------------------------------
 # Stopped Services
 # ---------------------------------------
@@ -104,4 +102,34 @@ def stopped_services():
     return {
         "stopped_count": len(stopped),
         "stopped_services": stopped
+    }
+
+
+# ---------------------------------------
+# Search Services
+# ---------------------------------------
+
+@router.get("/search")
+def search_services(name: str):
+
+    services = get_all_services()
+
+    search_term = name.strip().lower()
+
+    if not search_term:
+        return {
+            "count": 0,
+            "services": []
+        }
+
+    matching_services = [
+        service
+        for service in services
+        if search_term in service["service_name"].lower()
+        or search_term in service["display_name"].lower()
+    ]
+
+    return {
+        "count": len(matching_services),
+        "services": matching_services
     }

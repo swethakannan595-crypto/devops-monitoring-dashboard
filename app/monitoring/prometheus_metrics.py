@@ -1,3 +1,5 @@
+# app/monitoring/prometheus_metrics.py
+
 import threading
 import time
 from pathlib import Path
@@ -97,19 +99,23 @@ APPLICATION_UPTIME = Gauge(
 # ==========================================================
 
 try:
+
     docker_client = docker.from_env()
 
-    # Verify Docker connection
     docker_client.ping()
 
-    print("Prometheus Metrics: Docker connection successful")
+    print(
+        "Prometheus Metrics: "
+        "Docker connection successful"
+    )
 
-except Exception as e:
+except Exception as exc:
+
     docker_client = None
 
     print(
-        "Prometheus Metrics: Docker connection failed:",
-        e
+        "Prometheus Metrics: "
+        f"Docker connection failed: {exc}"
     )
 
 
@@ -118,17 +124,11 @@ except Exception as e:
 # ==========================================================
 
 def get_container_memory_percent():
-    """
-    Return the current Docker container memory usage
-    as a percentage of its configured memory limit.
-
-    Uses Linux cgroup information available inside Docker.
-    """
 
     try:
 
         # --------------------------------------------------
-        # cgroup v2
+        # Docker / Linux cgroup v2
         # --------------------------------------------------
 
         memory_current = Path(
@@ -159,22 +159,23 @@ def get_container_memory_percent():
                 if maximum > 0:
 
                     return (
-                        current /
-                        maximum *
-                        100
+                        current
+                        / maximum
+                        * 100
                     )
 
-
         # --------------------------------------------------
-        # cgroup v1
+        # Docker / Linux cgroup v1
         # --------------------------------------------------
 
         memory_usage = Path(
-            "/sys/fs/cgroup/memory/memory.usage_in_bytes"
+            "/sys/fs/cgroup/memory/"
+            "memory.usage_in_bytes"
         )
 
         memory_limit = Path(
-            "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+            "/sys/fs/cgroup/memory/"
+            "memory.limit_in_bytes"
         )
 
         if (
@@ -193,16 +194,16 @@ def get_container_memory_percent():
             if maximum > 0:
 
                 return (
-                    current /
-                    maximum *
-                    100
+                    current
+                    / maximum
+                    * 100
                 )
 
-    except Exception as e:
+    except Exception as exc:
 
         print(
             "Container memory detection error:",
-            e
+            exc
         )
 
     return None
@@ -245,7 +246,6 @@ def update_metrics():
 
             else:
 
-                # Fallback for non-Docker execution
                 MEMORY_USAGE.set(
                     psutil.virtual_memory().percent
                 )
@@ -255,16 +255,16 @@ def update_metrics():
             # Disk
             # --------------------------------------------------
 
-            try:
-
-                disk = psutil.disk_usage(
-                    "/"
-                )
-
-            except Exception:
+            if psutil.WINDOWS:
 
                 disk = psutil.disk_usage(
                     "C:\\"
+                )
+
+            else:
+
+                disk = psutil.disk_usage(
+                    "/"
                 )
 
             DISK_USAGE.set(
@@ -278,17 +278,19 @@ def update_metrics():
 
             network = psutil.net_io_counters()
 
-            NETWORK_BYTES_SENT.set(
-                network.bytes_sent
-            )
+            if network:
 
-            NETWORK_BYTES_RECEIVED.set(
-                network.bytes_recv
-            )
+                NETWORK_BYTES_SENT.set(
+                    network.bytes_sent
+                )
+
+                NETWORK_BYTES_RECEIVED.set(
+                    network.bytes_recv
+                )
 
 
             # --------------------------------------------------
-            # Processes
+            # Running Processes
             # --------------------------------------------------
 
             RUNNING_PROCESSES.set(
@@ -305,13 +307,15 @@ def update_metrics():
                 try:
 
                     all_containers = (
-                        docker_client.containers.list(
-                            all=True
-                        )
+                        docker_client
+                        .containers
+                        .list(all=True)
                     )
 
                     running_containers = (
-                        docker_client.containers.list()
+                        docker_client
+                        .containers
+                        .list()
                     )
 
                     TOTAL_CONTAINERS.set(
@@ -322,19 +326,21 @@ def update_metrics():
                         len(running_containers)
                     )
 
-                except Exception as e:
+                except Exception as exc:
 
                     print(
                         "Docker metrics error:",
-                        e
+                        exc
                     )
 
                     TOTAL_CONTAINERS.set(0)
+
                     RUNNING_CONTAINERS.set(0)
 
             else:
 
                 TOTAL_CONTAINERS.set(0)
+
                 RUNNING_CONTAINERS.set(0)
 
 
@@ -343,8 +349,8 @@ def update_metrics():
             # --------------------------------------------------
 
             APPLICATION_UPTIME.set(
-                time.time() -
-                APP_START_TIME
+                time.time()
+                - APP_START_TIME
             )
 
 
@@ -353,38 +359,54 @@ def update_metrics():
             # --------------------------------------------------
 
             print(
-                f"Metrics updated | "
+                "Metrics updated | "
                 f"CPU={cpu:.1f}% | "
-                f"Memory={MEMORY_USAGE._value.get():.1f}% | "
-                f"Disk={DISK_USAGE._value.get():.1f}%"
+                f"Memory="
+                f"{MEMORY_USAGE._value.get():.1f}% | "
+                f"Disk="
+                f"{DISK_USAGE._value.get():.1f}%"
             )
 
-
-        except Exception as e:
+        except Exception as exc:
 
             print(
                 "Metrics Error:",
-                e
+                exc
             )
 
-
+        # --------------------------------------------------
         # Update every 5 seconds
+        # --------------------------------------------------
 
         time.sleep(5)
 
 
 # ==========================================================
-# Start Background Metrics Thread
+# Initialize Metrics
 # ==========================================================
 
-thread = threading.Thread(
-    target=update_metrics,
-    daemon=True
-)
+_metrics_started = False
 
-thread.start()
 
-print(
-    "Prometheus Metrics: "
-    "Background metrics thread started"
-)
+def initialize_metrics():
+
+    global _metrics_started
+
+    if _metrics_started:
+
+        return
+
+    _metrics_started = True
+
+    thread = threading.Thread(
+        target=update_metrics,
+        daemon=True,
+        name="prometheus-metrics",
+    )
+
+    thread.start()
+
+    print(
+        "Prometheus Metrics: "
+        "Background metrics thread started"
+    )
