@@ -85,6 +85,28 @@ TOTAL_CONTAINERS = Gauge(
 
 
 # ==========================================================
+# Docker Container CPU Metrics
+# ==========================================================
+
+CONTAINER_CPU_USAGE = Gauge(
+    "docker_container_cpu_percent",
+    "Docker Container CPU Usage Percentage",
+    ["container"],
+)
+
+
+# ==========================================================
+# Docker Container Memory Metrics
+# ==========================================================
+
+CONTAINER_MEMORY_USAGE = Gauge(
+    "docker_container_memory_percent",
+    "Docker Container Memory Usage Percentage",
+    ["container"],
+)
+
+
+# ==========================================================
 # Application Metrics
 # ==========================================================
 
@@ -210,6 +232,280 @@ def get_container_memory_percent():
 
 
 # ==========================================================
+# Docker Container CPU Calculation
+# ==========================================================
+
+def calculate_container_cpu_percent(stats):
+
+    try:
+
+        cpu_stats = stats.get(
+            "cpu_stats",
+            {}
+        )
+
+        previous_cpu_stats = stats.get(
+            "precpu_stats",
+            {}
+        )
+
+        cpu_usage = cpu_stats.get(
+            "cpu_usage",
+            {}
+        )
+
+        previous_cpu_usage = (
+            previous_cpu_stats.get(
+                "cpu_usage",
+                {}
+            )
+        )
+
+        total_usage = cpu_usage.get(
+            "total_usage",
+            0
+        )
+
+        previous_total_usage = (
+            previous_cpu_usage.get(
+                "total_usage",
+                0
+            )
+        )
+
+        system_usage = cpu_stats.get(
+            "system_cpu_usage",
+            0
+        )
+
+        previous_system_usage = (
+            previous_cpu_stats.get(
+                "system_cpu_usage",
+                0
+            )
+        )
+
+        cpu_delta = (
+            total_usage
+            - previous_total_usage
+        )
+
+        system_delta = (
+            system_usage
+            - previous_system_usage
+        )
+
+        if (
+            cpu_delta <= 0
+            or system_delta <= 0
+        ):
+
+            return 0.0
+
+        online_cpus = cpu_stats.get(
+            "online_cpus"
+        )
+
+        if not online_cpus:
+
+            percpu_usage = cpu_usage.get(
+                "percpu_usage",
+                []
+            )
+
+            online_cpus = (
+                len(percpu_usage)
+                if percpu_usage
+                else 1
+            )
+
+        cpu_percent = (
+            cpu_delta
+            / system_delta
+            * online_cpus
+            * 100.0
+        )
+
+        return round(
+            cpu_percent,
+            2
+        )
+
+    except Exception as exc:
+
+        print(
+            "Docker CPU calculation error:",
+            exc
+        )
+
+        return 0.0
+
+
+# ==========================================================
+# Docker Container Memory Calculation
+# ==========================================================
+
+def calculate_container_memory_percent(stats):
+
+    try:
+
+        memory_stats = stats.get(
+            "memory_stats",
+            {}
+        )
+
+        usage = memory_stats.get(
+            "usage",
+            0
+        )
+
+        limit = memory_stats.get(
+            "limit",
+            0
+        )
+
+        if limit <= 0:
+
+            return 0.0
+
+        memory_percent = (
+            usage
+            / limit
+            * 100.0
+        )
+
+        return round(
+            memory_percent,
+            2
+        )
+
+    except Exception as exc:
+
+        print(
+            "Docker memory calculation error:",
+            exc
+        )
+
+        return 0.0
+
+
+# ==========================================================
+# Update Docker Container Metrics
+# ==========================================================
+
+def update_docker_container_metrics(
+    running_containers
+):
+
+    if not running_containers:
+
+        return
+
+    active_container_names = set()
+
+    for container in running_containers:
+
+        try:
+
+            container_name = (
+                container.name
+            )
+
+            active_container_names.add(
+                container_name
+            )
+
+            stats = container.stats(
+                stream=False
+            )
+
+            # ----------------------------------------------
+            # CPU
+            # ----------------------------------------------
+
+            cpu_percent = (
+                calculate_container_cpu_percent(
+                    stats
+                )
+            )
+
+            CONTAINER_CPU_USAGE.labels(
+                container=container_name
+            ).set(
+                cpu_percent
+            )
+
+            # ----------------------------------------------
+            # Memory
+            # ----------------------------------------------
+
+            memory_percent = (
+                calculate_container_memory_percent(
+                    stats
+                )
+            )
+
+            CONTAINER_MEMORY_USAGE.labels(
+                container=container_name
+            ).set(
+                memory_percent
+            )
+
+        except Exception as exc:
+
+            print(
+                "Docker container metric error "
+                f"for {getattr(container, 'name', 'unknown')}:",
+                exc
+            )
+
+    # ------------------------------------------------------
+    # Remove metrics for containers that are no longer
+    # running.
+    # ------------------------------------------------------
+
+    try:
+
+        existing_cpu_labels = (
+            list(
+                CONTAINER_CPU_USAGE._metrics.keys()
+            )
+        )
+
+        for labels in existing_cpu_labels:
+
+            if labels[0] not in active_container_names:
+
+                CONTAINER_CPU_USAGE.remove(
+                    labels[0]
+                )
+
+    except Exception:
+
+        pass
+
+    try:
+
+        existing_memory_labels = (
+            list(
+                CONTAINER_MEMORY_USAGE._metrics.keys()
+            )
+        )
+
+        for labels in existing_memory_labels:
+
+            if labels[0] not in active_container_names:
+
+                CONTAINER_MEMORY_USAGE.remove(
+                    labels[0]
+                )
+
+    except Exception:
+
+        pass
+
+
+# ==========================================================
 # Update Metrics
 # ==========================================================
 
@@ -227,7 +523,9 @@ def update_metrics():
                 interval=1
             )
 
-            CPU_USAGE.set(cpu)
+            CPU_USAGE.set(
+                cpu
+            )
 
 
             # --------------------------------------------------
@@ -326,6 +624,14 @@ def update_metrics():
                         len(running_containers)
                     )
 
+                    # ------------------------------------------
+                    # Per-container CPU and Memory
+                    # ------------------------------------------
+
+                    update_docker_container_metrics(
+                        running_containers
+                    )
+
                 except Exception as exc:
 
                     print(
@@ -333,15 +639,23 @@ def update_metrics():
                         exc
                     )
 
-                    TOTAL_CONTAINERS.set(0)
+                    TOTAL_CONTAINERS.set(
+                        0
+                    )
 
-                    RUNNING_CONTAINERS.set(0)
+                    RUNNING_CONTAINERS.set(
+                        0
+                    )
 
             else:
 
-                TOTAL_CONTAINERS.set(0)
+                TOTAL_CONTAINERS.set(
+                    0
+                )
 
-                RUNNING_CONTAINERS.set(0)
+                RUNNING_CONTAINERS.set(
+                    0
+                )
 
 
             # --------------------------------------------------
@@ -364,7 +678,9 @@ def update_metrics():
                 f"Memory="
                 f"{MEMORY_USAGE._value.get():.1f}% | "
                 f"Disk="
-                f"{DISK_USAGE._value.get():.1f}%"
+                f"{DISK_USAGE._value.get():.1f}% | "
+                f"Containers="
+                f"{RUNNING_CONTAINERS._value.get():.0f}"
             )
 
         except Exception as exc:

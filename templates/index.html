@@ -27,6 +27,8 @@
             --violet: #a78bfa;
             --amber: #fbbf24;
             --red: #f87171;
+            --indigo: #6366f1;
+            --grad: linear-gradient(135deg, #6366f1, #8b5cf6);
         }
 
         body {
@@ -36,14 +38,35 @@
                 Helvetica,
                 sans-serif;
 
-            background: #0b1120;
+            background:
+                radial-gradient(1100px circle at 12% -8%, rgba(99,102,241,0.14), transparent 45%),
+                radial-gradient(900px circle at 92% 108%, rgba(34,211,238,0.09), transparent 45%),
+                #050e0f;
+            background-attachment: fixed;
+
             color: #e5e7eb;
             min-height: 100vh;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+
+            background-image:
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 42px 42px;
+
+            mask-image: radial-gradient(circle at 30% 0%, black, transparent 75%);
         }
 
         .app {
             display: flex;
             min-height: 100vh;
+            position: relative;
+            z-index: 1;
         }
 
         /* =====================================================
@@ -53,8 +76,10 @@
         .sidebar {
             width: 254px;
 
-            background: #111827;
-            border-right: 1px solid #1f2937;
+            background: rgba(15, 20, 34, 0.86);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-right: 1px solid rgba(255,255,255,0.06);
 
             padding: 24px 16px;
 
@@ -67,6 +92,8 @@
 
             display: flex;
             flex-direction: column;
+
+            z-index: 2;
         }
 
         .brand {
@@ -77,23 +104,12 @@
             margin-bottom: 30px;
         }
 
-        .brand-icon {
-            width: 36px;
-            height: 36px;
-
-            border-radius: 10px;
-
-            background: rgba(29, 78, 216, 0.15);
-            border: 1px solid rgba(29, 78, 216, 0.35);
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            color: #60a5fa;
-            font-size: 15px;
-
+        .brand-logo {
+            width: 38px;
+            height: 38px;
             flex-shrink: 0;
+
+            filter: drop-shadow(0 0 8px rgba(99,102,241,0.45));
         }
 
         .brand-title {
@@ -101,6 +117,18 @@
             font-weight: 700;
             color: #f9fafb;
             line-height: 1.2;
+
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-title .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
         }
 
         .brand-subtitle {
@@ -161,8 +189,9 @@
         }
 
         .nav-item.active {
-            background: #1d4ed8;
+            background: var(--grad);
             color: #ffffff;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.35);
         }
 
         .nav-item.active i.nav-icon {
@@ -372,6 +401,295 @@
             to { transform: rotate(360deg); }
         }
 
+        .account-btn {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 6px 14px 6px 6px;
+            cursor: pointer;
+            color: #e5e7eb;
+            font-size: 13px;
+            font-weight: 600;
+
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .account-btn:hover { background: rgba(255,255,255,0.08); }
+
+        .account-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--grad);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+
+        /* =====================================================
+           SUB-TABS (used inside Docker view)
+        ===================================================== */
+
+        .subview { display: none; }
+        .subview.active { display: block; animation: fadeIn 0.2s ease; }
+
+
+        /* =====================================================
+           LOGS
+        ===================================================== */
+
+        .log-row {
+            display: flex;
+            gap: 12px;
+            padding: 10px 12px;
+            border-left: 3px solid #334155;
+            background: #0f172a;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 12.5px;
+            align-items: flex-start;
+        }
+
+        .log-row.level-info { border-left-color: var(--blue); }
+        .log-row.level-warning { border-left-color: var(--amber); }
+        .log-row.level-error { border-left-color: var(--red); }
+
+        .log-time {
+            font-family: monospace;
+            color: #64748b;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .log-level {
+            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            width: 62px;
+        }
+
+        .log-level.level-info { color: var(--blue); }
+        .log-level.level-warning { color: var(--amber); }
+        .log-level.level-error { color: var(--red); }
+
+        .log-message {
+            color: #e2e8f0;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state i {
+            font-size: 26px;
+            color: #334155;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .empty-state-title {
+            color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13.5px;
+        }
+
+        .empty-state-text {
+            font-size: 12.5px;
+            max-width: 420px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+
+        /* =====================================================
+           ALERTS
+        ===================================================== */
+
+        .alert-status-label {
+            font-size: 22px;
+            font-weight: 800;
+            margin: 10px 0 4px;
+        }
+
+        .alert-status-label.normal { color: var(--green); }
+        .alert-status-label.warning { color: #facc15; }
+        .alert-status-label.danger { color: var(--red); }
+
+        .active-alert-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 13px 14px;
+            background: #0f172a;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--red);
+        }
+
+        .active-alert-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: #f8fafc;
+        }
+
+        .active-alert-meta {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+        }
+
+        .firing-pill {
+            background: #3f1111;
+            color: #fca5a5;
+            border: 1px solid #7f1d1d;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           AUTH SCREENS
+        ===================================================== */
+
+        .auth-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 65vh;
+        }
+
+        .auth-card {
+            width: 380px;
+            max-width: 100%;
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 34px 30px;
+        }
+
+        .auth-logo {
+            width: 46px;
+            height: 46px;
+            margin: 0 auto 16px;
+            display: block;
+            filter: drop-shadow(0 0 10px rgba(99,102,241,0.5));
+        }
+
+        .auth-title {
+            text-align: center;
+            font-size: 19px;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 4px;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            font-size: 12.5px;
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        .auth-field {
+            margin-bottom: 14px;
+        }
+
+        .auth-label {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #f8fafc;
+            font-size: 13.5px;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--indigo);
+        }
+
+        .auth-submit {
+            width: 100%;
+            background: var(--grad);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 11px;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 6px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-submit:hover { filter: brightness(1.08); }
+        .auth-submit:disabled { opacity: 0.6; cursor: wait; }
+
+        .auth-switch {
+            text-align: center;
+            font-size: 12.5px;
+            color: #64748b;
+            margin-top: 18px;
+        }
+
+        .auth-switch a {
+            color: #818cf8;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .auth-switch a:hover { text-decoration: underline; }
+
+        .auth-message {
+            display: none;
+            font-size: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .auth-message.show { display: block; }
+
+        .auth-message.error {
+            background: #3f1111;
+            border: 1px solid #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .auth-message.success {
+            background: #052e16;
+            border: 1px solid #166534;
+            color: #86efac;
+        }
+
 
         /* =====================================================
            VIEWS
@@ -498,11 +816,35 @@
         }
 
         .card {
-            background: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 12px;
+            background: rgba(17, 24, 39, 0.72);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+        }
+
+        .card:hover::after { opacity: 1; }
+
+        .card:nth-child(1)::after { background: var(--cyan); }
+        .card:nth-child(2)::after { background: var(--blue); }
+        .card:nth-child(3)::after { background: var(--orange); }
 
         .card-top {
             display: flex;
@@ -564,9 +906,10 @@
         }
 
         .panel {
-            background: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 12px;
+            background: rgba(17, 24, 39, 0.72);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
             padding: 22px;
             margin-bottom: 20px;
         }
@@ -1047,6 +1390,8 @@
 
 <body>
 
+<div class="bg-grid"></div>
+
 <div class="app">
 
 
@@ -1058,12 +1403,19 @@
 
         <div class="brand">
 
-            <div class="brand-icon">
-                <i class="fa-solid fa-bolt"></i>
-            </div>
+            <svg class="brand-logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#6366f1" />
+                        <stop offset="100%" stop-color="#22d3ee" />
+                    </linearGradient>
+                </defs>
+                <path d="M20 2 L36 11 V29 L20 38 L4 29 V11 Z" fill="url(#logoGrad)" opacity="0.18" stroke="url(#logoGrad)" stroke-width="1.5"/>
+                <path d="M10 21 H16 L19 14 L23 27 L26 21 H30" fill="none" stroke="url(#logoGrad)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
 
             <div>
-                <div class="brand-title">DevOps Monitor</div>
+                <div class="brand-title">DevOps Monitor <span class="dot"></span></div>
                 <div class="brand-subtitle">FastAPI + Prometheus</div>
             </div>
 
@@ -1089,7 +1441,7 @@
 
         <a class="nav-item" href="#docker" data-view="docker">
             <i class="fa-brands fa-docker nav-icon"></i>
-            Docker Containers
+            Docker
             <span id="navDockerBadge" class="nav-badge"></span>
         </a>
 
@@ -1108,19 +1460,15 @@
 
         <div class="section-title">Operations</div>
 
-        <a class="nav-item" href="/dashboard">
-            <i class="fa-solid fa-magnifying-glass-chart nav-icon"></i>
-            Analysis
-        </a>
-
-        <a class="nav-item" href="/dashboard">
+        <a class="nav-item" href="#logs" data-view="logs">
             <i class="fa-solid fa-file-lines nav-icon"></i>
             Logs
         </a>
 
-        <a class="nav-item" href="/dashboard">
+        <a class="nav-item" href="#alerts" data-view="alerts">
             <i class="fa-solid fa-triangle-exclamation nav-icon"></i>
             Alerts
+            <span id="navAlertsBadge" class="nav-badge"></span>
         </a>
 
         <a class="nav-item" href="/dashboard">
@@ -1173,6 +1521,11 @@
                     <span class="live-dot"></span>
                     Live monitoring
                 </div>
+
+                <button id="accountBtn" class="account-btn" onclick="toggleAccountView()">
+                    <span id="accountAvatar" class="account-avatar"><i class="fa-solid fa-user" style="font-size:10px;"></i></span>
+                    <span id="accountLabel">Sign In</span>
+                </button>
 
             </div>
 
@@ -1470,11 +1823,11 @@
 
                 <div class="panel-head">
                     <div>
-                        <h2><span class="panel-icon blue"><i class="fa-brands fa-docker"></i></span>Docker Containers</h2>
-                        <div class="panel-description">Docker daemon status and running containers</div>
+                        <h2><span class="panel-icon blue"><i class="fa-brands fa-docker"></i></span>Docker</h2>
+                        <div class="panel-description">Daemon status, containers, images, and live resource stats</div>
                     </div>
 
-                    <button class="refresh-btn small" onclick="loadDockerData()">
+                    <button class="refresh-btn small" onclick="loadAllDockerData()">
                         <i class="fa-solid fa-rotate"></i>
                         Refresh
                     </button>
@@ -1485,14 +1838,76 @@
                     <span id="dockerErrorText"></span>
                 </div>
 
-                <div class="status-row" style="margin-bottom: 16px;">
+                <div class="status-row" style="margin-bottom: 18px;">
                     <span class="status-name"><i class="fa-brands fa-docker"></i>Docker Daemon</span>
                     <span id="dockerDaemonStatus" class="online">
                         <i class="fa-solid fa-circle"></i>CHECKING...
                     </span>
                 </div>
 
-                <div id="dockerGrid" class="docker-grid"></div>
+                <div class="tab-group" style="margin-bottom: 18px;">
+                    <button id="dockerTabContainers" class="tab-btn active" onclick="setDockerTab('containers')">
+                        <i class="fa-solid fa-box"></i>Containers
+                    </button>
+                    <button id="dockerTabImages" class="tab-btn" onclick="setDockerTab('images')">
+                        <i class="fa-solid fa-layer-group"></i>Images
+                    </button>
+                    <button id="dockerTabStats" class="tab-btn" onclick="setDockerTab('stats')">
+                        <i class="fa-solid fa-gauge"></i>Live Stats
+                    </button>
+                    <button id="dockerTabInfo" class="tab-btn" onclick="setDockerTab('info')">
+                        <i class="fa-solid fa-circle-info"></i>Info
+                    </button>
+                </div>
+
+                <div id="dockerSubviewContainers" class="subview active">
+                    <div id="dockerGrid" class="docker-grid"></div>
+                </div>
+
+                <div id="dockerSubviewImages" class="subview">
+                    <div class="table-wrap">
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Repository</th>
+                                        <th>Tag</th>
+                                        <th>Image ID</th>
+                                        <th>Size</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dockerImagesBody">
+                                    <tr class="empty-row"><td colspan="4">Loading images...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dockerSubviewStats" class="subview">
+                    <div class="table-wrap">
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Container</th>
+                                        <th>CPU %</th>
+                                        <th>Memory %</th>
+                                        <th>Net I/O</th>
+                                        <th>Block I/O</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dockerStatsBody">
+                                    <tr class="empty-row"><td colspan="5">Loading live stats...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dockerSubviewInfo" class="subview">
+                    <div id="dockerInfoGrid" class="info-grid"></div>
+                </div>
 
             </div>
 
@@ -1685,6 +2100,248 @@
 
 
         <!-- =================================================
+             VIEW: LOGS
+        ================================================== -->
+
+        <section id="view-logs" class="view">
+
+            <div class="panel">
+
+                <div class="panel-head">
+                    <div>
+                        <h2><span class="panel-icon violet"><i class="fa-solid fa-file-lines"></i></span>Log Viewer</h2>
+                        <div class="panel-description">Application and Docker container logs</div>
+                    </div>
+
+                    <button class="refresh-btn small" onclick="loadLogs()">
+                        <i class="fa-solid fa-rotate"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="logsError" class="panel-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="logsErrorText"></span>
+                </div>
+
+                <div class="toolbar">
+
+                    <div class="search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input
+                            id="logsSearchInput"
+                            class="search-input"
+                            type="text"
+                            placeholder="Filter log messages..."
+                            oninput="renderLogs()">
+                    </div>
+
+                    <div class="tab-group">
+                        <button id="logsSourceApp" class="tab-btn active" onclick="setLogsSource('application')">
+                            <i class="fa-solid fa-server"></i>Application
+                        </button>
+                        <button id="logsSourceDocker" class="tab-btn" onclick="setLogsSource('docker')">
+                            <i class="fa-brands fa-docker"></i>Docker
+                        </button>
+                    </div>
+
+                    <div class="tab-group">
+                        <button id="logsLevelAll" class="tab-btn active" onclick="setLogsLevel('all')">All</button>
+                        <button id="logsLevelInfo" class="tab-btn" onclick="setLogsLevel('info')">Info</button>
+                        <button id="logsLevelWarning" class="tab-btn" onclick="setLogsLevel('warning')">Warning</button>
+                        <button id="logsLevelError" class="tab-btn" onclick="setLogsLevel('error')">Error</button>
+                    </div>
+
+                </div>
+
+                <div id="logsList"></div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             VIEW: ALERTS
+        ================================================== -->
+
+        <section id="view-alerts" class="view">
+
+            <div class="cards" style="margin-bottom: 20px;">
+
+                <div class="card">
+                    <div class="card-top">
+                        <div class="card-icon cyan"><i class="fa-solid fa-microchip"></i></div>
+                        <div class="card-label">CPU ALERT RULE</div>
+                    </div>
+                    <div id="alertCpuLabel" class="alert-status-label normal">NORMAL</div>
+                    <div class="status">Threshold: &gt; 80% for 2 min</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-top">
+                        <div class="card-icon blue"><i class="fa-solid fa-memory"></i></div>
+                        <div class="card-label">MEMORY ALERT RULE</div>
+                    </div>
+                    <div id="alertMemLabel" class="alert-status-label normal">NORMAL</div>
+                    <div class="status">Threshold: &gt; 85% for 2 min</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-top">
+                        <div class="card-icon orange"><i class="fa-solid fa-hard-drive"></i></div>
+                        <div class="card-label">DISK ALERT RULE</div>
+                    </div>
+                    <div id="alertDiskLabel" class="alert-status-label normal">NORMAL</div>
+                    <div class="status">Threshold: &gt; 90% for 5 min</div>
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="panel-head">
+                    <div>
+                        <h2><span class="panel-icon amber"><i class="fa-solid fa-bell"></i></span>Active Alerts</h2>
+                        <div class="panel-description">Live feed from Alertmanager</div>
+                    </div>
+
+                    <button class="refresh-btn small" onclick="loadAlertsFeed()">
+                        <i class="fa-solid fa-rotate"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="alertsFeedError" class="panel-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="alertsFeedErrorText"></span>
+                </div>
+
+                <div id="activeAlertsList"></div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             VIEW: LOGIN
+        ================================================== -->
+
+        <section id="view-login" class="view">
+
+            <div class="auth-wrap">
+                <div class="auth-card">
+
+                    <svg class="auth-logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="authLogoGrad1" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#6366f1" />
+                                <stop offset="100%" stop-color="#22d3ee" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M20 2 L36 11 V29 L20 38 L4 29 V11 Z" fill="url(#authLogoGrad1)" opacity="0.18" stroke="url(#authLogoGrad1)" stroke-width="1.5"/>
+                        <path d="M10 21 H16 L19 14 L23 27 L26 21 H30" fill="none" stroke="url(#authLogoGrad1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+
+                    <div class="auth-title">Welcome back</div>
+                    <div class="auth-subtitle">Sign in to your DevOps Monitor account</div>
+
+                    <div id="loginMessage" class="auth-message"></div>
+
+                    <form id="loginForm" onsubmit="handleLogin(event)">
+
+                        <div class="auth-field">
+                            <label class="auth-label">Email or username</label>
+                            <input id="loginUsername" class="auth-input" type="text" required autocomplete="username">
+                        </div>
+
+                        <div class="auth-field">
+                            <label class="auth-label">Password</label>
+                            <input id="loginPassword" class="auth-input" type="password" required autocomplete="current-password">
+                        </div>
+
+                        <button id="loginSubmitBtn" class="auth-submit" type="submit">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            Sign In
+                        </button>
+
+                    </form>
+
+                    <div class="auth-switch">
+                        Don't have an account? <a onclick="switchView('register')">Create one</a>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             VIEW: REGISTER
+        ================================================== -->
+
+        <section id="view-register" class="view">
+
+            <div class="auth-wrap">
+                <div class="auth-card">
+
+                    <svg class="auth-logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="authLogoGrad2" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#6366f1" />
+                                <stop offset="100%" stop-color="#22d3ee" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M20 2 L36 11 V29 L20 38 L4 29 V11 Z" fill="url(#authLogoGrad2)" opacity="0.18" stroke="url(#authLogoGrad2)" stroke-width="1.5"/>
+                        <path d="M10 21 H16 L19 14 L23 27 L26 21 H30" fill="none" stroke="url(#authLogoGrad2)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+
+                    <div class="auth-title">Create your account</div>
+                    <div class="auth-subtitle">Get access to the DevOps Monitor dashboard</div>
+
+                    <div id="registerMessage" class="auth-message"></div>
+
+                    <form id="registerForm" onsubmit="handleRegister(event)">
+
+                        <div class="auth-field">
+                            <label class="auth-label">Email</label>
+                            <input id="registerEmail" class="auth-input" type="email" required autocomplete="email">
+                        </div>
+
+                        <div class="auth-field">
+                            <label class="auth-label">Username</label>
+                            <input id="registerUsername" class="auth-input" type="text" required autocomplete="username">
+                        </div>
+
+                        <div class="auth-field">
+                            <label class="auth-label">Password</label>
+                            <input id="registerPassword" class="auth-input" type="password" required autocomplete="new-password" minlength="8">
+                        </div>
+
+                        <button id="registerSubmitBtn" class="auth-submit" type="submit">
+                            <i class="fa-solid fa-user-plus"></i>
+                            Create Account
+                        </button>
+
+                    </form>
+
+                    <div class="auth-switch">
+                        Already have an account? <a onclick="switchView('login')">Sign in</a>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
              FOOTER
         ================================================== -->
 
@@ -1786,9 +2443,13 @@ const VIEWS = {
     overview:   { title: "Overview",            subtitle: "Real-time infrastructure summary",                          icon: "fa-solid fa-gauge-high",   crumb: "Overview" },
     system:     { title: "System Monitor",       subtitle: "Real-time CPU, memory, disk and network monitoring",        icon: "fa-solid fa-desktop",       crumb: "System Monitor" },
     prometheus: { title: "Prometheus Metrics",   subtitle: "Metrics exposed for scraping at /metrics",                  icon: "fa-solid fa-chart-area",    crumb: "Prometheus Metrics" },
-    docker:     { title: "Docker Containers",    subtitle: "Docker daemon status and running containers",               icon: "fa-brands fa-docker",       crumb: "Docker Containers" },
+    docker:     { title: "Docker",               subtitle: "Daemon status, containers, images, and live resource stats", icon: "fa-brands fa-docker",       crumb: "Docker" },
     processes:  { title: "Process Monitoring",   subtitle: "Search, sort, and inspect running processes",               icon: "fa-solid fa-list-check",    crumb: "Processes" },
-    services:   { title: "Windows Services",     subtitle: "Search and filter Windows services by status",              icon: "fa-solid fa-gears",         crumb: "Services" }
+    services:   { title: "Windows Services",     subtitle: "Search and filter Windows services by status",              icon: "fa-solid fa-gears",         crumb: "Services" },
+    logs:       { title: "Log Viewer",           subtitle: "Application and Docker container logs",                     icon: "fa-solid fa-file-lines",    crumb: "Logs" },
+    alerts:     { title: "Alerts",               subtitle: "Alert rule status and the live Alertmanager feed",          icon: "fa-solid fa-triangle-exclamation", crumb: "Alerts" },
+    login:      { title: "Sign In",              subtitle: "Access your DevOps Monitor dashboard",                      icon: "fa-solid fa-right-to-bracket", crumb: "Sign In" },
+    register:   { title: "Create Account",       subtitle: "Set up a new DevOps Monitor account",                       icon: "fa-solid fa-user-plus",     crumb: "Create Account" }
 };
 
 function switchView(name) {
