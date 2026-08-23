@@ -173,6 +173,10 @@ A log viewer page with:
 - Live search across log messages
 - Color-coded entries by severity
 
+  <img width="959" height="307" alt="image" src="https://github.com/user-attachments/assets/e5131bda-a5c5-43fb-80ed-69b3b3092334" />
+  
+
+
 ### 🔐 Authentication *(UI in place, backend in progress)*
 Sign-in and account creation screens are built into the dashboard, ready to connect to session/JWT-based route protection:
 - Sign In and Create Account forms
