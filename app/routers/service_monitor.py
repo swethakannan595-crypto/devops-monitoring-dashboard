@@ -1,6 +1,5 @@
 from fastapi import APIRouter
-import win32service
-
+import platform
 
 router = APIRouter(
     prefix="/services",
@@ -8,7 +7,18 @@ router = APIRouter(
 )
 
 
+# --------------------------------------------------
+# Windows Service Support
+# --------------------------------------------------
+
 def get_all_services():
+
+    # Windows only
+    if platform.system() != "Windows":
+        return []
+
+    # Import only on Windows
+    import win32service
 
     scm = win32service.OpenSCManager(
         None,
@@ -48,12 +58,20 @@ def get_all_services():
         win32service.CloseServiceHandle(scm)
 
 
-# ---------------------------------------
+# --------------------------------------------------
 # Get All Services
-# ---------------------------------------
+# --------------------------------------------------
 
 @router.get("/")
 def list_services():
+
+    if platform.system() != "Windows":
+        return {
+            "platform": platform.system(),
+            "message": "Windows Service Monitoring is available only on Windows.",
+            "total_services": 0,
+            "services": []
+        }
 
     services = get_all_services()
 
@@ -63,12 +81,20 @@ def list_services():
     }
 
 
-# ---------------------------------------
+# --------------------------------------------------
 # Running Services
-# ---------------------------------------
+# --------------------------------------------------
 
 @router.get("/running")
 def running_services():
+
+    if platform.system() != "Windows":
+        return {
+            "platform": platform.system(),
+            "message": "Windows Service Monitoring is available only on Windows.",
+            "running_count": 0,
+            "running_services": []
+        }
 
     services = get_all_services()
 
@@ -84,12 +110,20 @@ def running_services():
     }
 
 
-# ---------------------------------------
+# --------------------------------------------------
 # Stopped Services
-# ---------------------------------------
+# --------------------------------------------------
 
 @router.get("/stopped")
 def stopped_services():
+
+    if platform.system() != "Windows":
+        return {
+            "platform": platform.system(),
+            "message": "Windows Service Monitoring is available only on Windows.",
+            "stopped_count": 0,
+            "stopped_services": []
+        }
 
     services = get_all_services()
 
@@ -105,12 +139,20 @@ def stopped_services():
     }
 
 
-# ---------------------------------------
+# --------------------------------------------------
 # Search Services
-# ---------------------------------------
+# --------------------------------------------------
 
 @router.get("/search")
 def search_services(name: str):
+
+    if platform.system() != "Windows":
+        return {
+            "platform": platform.system(),
+            "message": "Windows Service Monitoring is available only on Windows.",
+            "count": 0,
+            "services": []
+        }
 
     services = get_all_services()
 
