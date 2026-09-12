@@ -4,7 +4,7 @@
 
 A real-time infrastructure monitoring platform built with **FastAPI, Prometheus, Grafana, Docker, and Alertmanager** — with a multi-page dashboard for system, process, service, and container observability.
 
-🔗 Live Demo: [https://devops-monitoring-dashboard-zrgq.onrender.com](url)
+🔗 Live Demo: https://devops-monitoring-dashboard-zrgq.onrender.com/dashboard
 
 </div>
 
