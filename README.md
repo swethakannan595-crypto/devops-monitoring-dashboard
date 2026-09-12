@@ -4,14 +4,7 @@
 
 A real-time infrastructure monitoring platform built with **FastAPI, Prometheus, Grafana, Docker, and Alertmanager** — with a multi-page dashboard for system, process, service, and container observability.
 
-![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.139+-009688?logo=fastapi&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-E6522C?logo=prometheus&logoColor=white)
-![Grafana](https://img.shields.io/badge/Grafana-Visualization-F46800?logo=grafana&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerization-2496ED?logo=docker&logoColor=white)
-![Alertmanager](https://img.shields.io/badge/Alertmanager-Alerting-E6522C)
-![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+🔗 Live Demo: [https://devops-monitoring-dashboard-zrgq.onrender.com](url)
 
 </div>
 
